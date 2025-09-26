@@ -1,0 +1,19 @@
+###
+# @name login
+# Login as the test user to get an API token
+POST http://localhost/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+    "email": "test@example.com",
+    "password": "password"
+}
+
+
+###
+# Get User Session Data (Requires Auth)
+# This request uses the token from the login request above.
+GET http://localhost/api/rewards/v2/users/me/session
+Accept: application/json
+Authorization: Bearer {{login.response.body.data.token}}
