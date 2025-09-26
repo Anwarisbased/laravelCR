@@ -48,13 +48,13 @@ class ReferralService {
             return; 
         }
 
-        if (1 === $this->action_log_repository->countUserActions($user_id, 'scan')) {
-            $user_id_vo = \App\Domain\ValueObjects\UserId::fromInt($user_id);
-            $referrer_user_id = $this->user_repository->getReferringUserId($user_id_vo);
-            
-            if ($referrer_user_id) {
-                $this->execute_triggers('referral_converted', $referrer_user_id, ['invitee_id' => $user_id]);
-            }
+        // In the anti-fragile approach, this method is only called for first scans,
+        // so no need to check scan count here
+        $user_id_vo = \App\Domain\ValueObjects\UserId::fromInt($user_id);
+        $referrer_user_id = $this->user_repository->getReferringUserId($user_id_vo);
+        
+        if ($referrer_user_id) {
+            $this->execute_triggers('referral_converted', $referrer_user_id, ['invitee_id' => $user_id]);
         }
     }
     
