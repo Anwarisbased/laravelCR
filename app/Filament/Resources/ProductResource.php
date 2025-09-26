@@ -45,7 +45,12 @@ class ProductResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('generate-qr-codes')
+                    ->label('Generate QR Codes')
+                    ->url(fn ($record) => ProductResource::getUrl('generate-qr-codes', ['record' => $record]))
+                    ->icon('heroicon-s-qr-code'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -67,6 +72,7 @@ class ProductResource extends Resource
             'index' => Pages\ListProducts::route('/'),
             'create' => Pages\CreateProduct::route('/create'),
             'edit' => Pages\EditProduct::route('/{record}/edit'),
+            'generate-qr-codes' => Pages\GenerateQrCodes::route('/{record}/generate-qr-codes'),
         ];
     }
 }

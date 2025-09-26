@@ -8,7 +8,6 @@ use App\Domain\ValueObjects\EmailAddress;
 use App\Domain\ValueObjects\PlainTextPassword;
 use App\Domain\ValueObjects\PhoneNumber;
 use App\Domain\ValueObjects\ReferralCode;
-use App\Domain\ValueObjects\RegistrationToken;
 
 class RegisterWithTokenRequest extends FormRequest
 {

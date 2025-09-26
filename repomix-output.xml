@@ -84,6 +84,11 @@ app/
     ShippingAddressDTO.php
   Filament/
     Resources/
+      AchievementResource/
+        Pages/
+          CreateAchievement.php
+          EditAchievement.php
+          ListAchievements.php
       ProductResource/
         Pages/
           CreateProduct.php
@@ -94,8 +99,15 @@ app/
           CreateRank.php
           EditRank.php
           ListRanks.php
+      TriggerResource/
+        Pages/
+          CreateTrigger.php
+          EditTrigger.php
+          ListTriggers.php
+      AchievementResource.php
       ProductResource.php
       RankResource.php
+      TriggerResource.php
   Http/
     Controllers/
       Api/
@@ -129,6 +141,7 @@ app/
     Product.php
     Rank.php
     RewardCode.php
+    Trigger.php
     User.php
     UserAchievement.php
   Policies/
@@ -206,6 +219,7 @@ database/
     2025_09_25_194541_create_reward_codes_table.php
     2025_09_25_194548_create_achievements_table.php
     2025_09_25_194555_create_user_achievements_table.php
+    2025_09_26_012000_create_triggers_table.php
   seeders/
     DatabaseSeeder.php
   .gitignore
@@ -243,7 +257,6 @@ oldcodebase-repomix-output.xml
 package.json
 phpunit.xml
 README.md
-realniggainstructions.md
 repomix.config.json5
 test_api_endpoints.php
 test_endpoints_simple.php
@@ -1598,6 +1611,65 @@ final class ShippingAddressDTO {
 }
 </file>
 
+<file path="app/Filament/Resources/AchievementResource/Pages/CreateAchievement.php">
+<?php
+
+namespace App\Filament\Resources\AchievementResource\Pages;
+
+use App\Filament\Resources\AchievementResource;
+use Filament\Actions;
+use Filament\Resources\Pages\CreateRecord;
+
+class CreateAchievement extends CreateRecord
+{
+    protected static string $resource = AchievementResource::class;
+}
+</file>
+
+<file path="app/Filament/Resources/AchievementResource/Pages/EditAchievement.php">
+<?php
+
+namespace App\Filament\Resources\AchievementResource\Pages;
+
+use App\Filament\Resources\AchievementResource;
+use Filament\Actions;
+use Filament\Resources\Pages\EditRecord;
+
+class EditAchievement extends EditRecord
+{
+    protected static string $resource = AchievementResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\DeleteAction::make(),
+        ];
+    }
+}
+</file>
+
+<file path="app/Filament/Resources/AchievementResource/Pages/ListAchievements.php">
+<?php
+
+namespace App\Filament\Resources\AchievementResource\Pages;
+
+use App\Filament\Resources\AchievementResource;
+use Filament\Actions;
+use Filament\Resources\Pages\ListRecords;
+
+class ListAchievements extends ListRecords
+{
+    protected static string $resource = AchievementResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
+}
+</file>
+
 <file path="app/Filament/Resources/ProductResource/Pages/CreateProduct.php">
 <?php
 
@@ -1711,6 +1783,144 @@ class ListRanks extends ListRecords
     {
         return [
             Actions\CreateAction::make(),
+        ];
+    }
+}
+</file>
+
+<file path="app/Filament/Resources/TriggerResource/Pages/CreateTrigger.php">
+<?php
+
+namespace App\Filament\Resources\TriggerResource\Pages;
+
+use App\Filament\Resources\TriggerResource;
+use Filament\Actions;
+use Filament\Resources\Pages\CreateRecord;
+
+class CreateTrigger extends CreateRecord
+{
+    protected static string $resource = TriggerResource::class;
+}
+</file>
+
+<file path="app/Filament/Resources/TriggerResource/Pages/EditTrigger.php">
+<?php
+
+namespace App\Filament\Resources\TriggerResource\Pages;
+
+use App\Filament\Resources\TriggerResource;
+use Filament\Actions;
+use Filament\Resources\Pages\EditRecord;
+
+class EditTrigger extends EditRecord
+{
+    protected static string $resource = TriggerResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\DeleteAction::make(),
+        ];
+    }
+}
+</file>
+
+<file path="app/Filament/Resources/TriggerResource/Pages/ListTriggers.php">
+<?php
+
+namespace App\Filament\Resources\TriggerResource\Pages;
+
+use App\Filament\Resources\TriggerResource;
+use Filament\Actions;
+use Filament\Resources\Pages\ListRecords;
+
+class ListTriggers extends ListRecords
+{
+    protected static string $resource = TriggerResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
+}
+</file>
+
+<file path="app/Filament/Resources/AchievementResource.php">
+<?php
+
+namespace App\Filament\Resources;
+
+use App\Filament\Resources\AchievementResource\Pages;
+use App\Filament\Resources\AchievementResource\RelationManagers;
+use App\Models\Achievement;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
+
+class AchievementResource extends Resource
+{
+    protected static ?string $model = Achievement::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\TextInput::make('achievement_key')->required()->label('Key (e.g., first_scan)'),
+                Forms\Components\TextInput::make('title')->required(),
+                Forms\Components\Textarea::make('description')->columnSpanFull(),
+                Forms\Components\TextInput::make('points_reward')->numeric()->default(0),
+                Forms\Components\Select::make('rarity')->options(['common' => 'Common', 'uncommon' => 'Uncommon', 'rare' => 'Rare'])->required(),
+                Forms\Components\Select::make('trigger_event')->options(['first_product_scanned' => 'First Scanned', 'standard_product_scanned' => 'Standard Scanned'])->required(),
+                Forms\Components\TextInput::make('trigger_count')->numeric()->default(1)->required(),
+                Forms\Components\Toggle::make('is_active')->default(true),
+                Forms\Components\Textarea::make('conditions')->label('Conditions (JSON)')->columnSpanFull()->nullable(),
+            ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('title')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('achievement_key'),
+                Tables\Columns\TextColumn::make('trigger_event'),
+                Tables\Columns\TextColumn::make('points_reward')->sortable(),
+                Tables\Columns\IconColumn::make('is_active')->boolean(),
+            ])
+            ->filters([
+                //
+            ])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
+            ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            //
+        ];
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListAchievements::route('/'),
+            'create' => Pages\CreateAchievement::route('/create'),
+            'edit' => Pages\EditAchievement::route('/{record}/edit'),
         ];
     }
 }
@@ -1855,6 +2065,79 @@ class RankResource extends Resource
 }
 </file>
 
+<file path="app/Filament/Resources/TriggerResource.php">
+<?php
+
+namespace App\Filament\Resources;
+
+use App\Filament\Resources\TriggerResource\Pages;
+use App\Filament\Resources\TriggerResource\RelationManagers;
+use App\Models\Trigger;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
+
+class TriggerResource extends Resource
+{
+    protected static ?string $model = Trigger::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\TextInput::make('name')->required()->label('Trigger Name'),
+                Forms\Components\Select::make('event_key')->options(['referral_converted' => 'Referral Converted'])->required(),
+                Forms\Components\Select::make('action_type')->options(['grant_points' => 'Grant Points'])->required(),
+                Forms\Components\TextInput::make('action_value')->required()->label('Value (e.g., 500)'),
+            ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('name')->searchable(),
+                Tables\Columns\TextColumn::make('event_key'),
+                Tables\Columns\TextColumn::make('action_type'),
+                Tables\Columns\TextColumn::make('action_value'),
+            ])
+            ->filters([
+                //
+            ])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
+            ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            //
+        ];
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListTriggers::route('/'),
+            'create' => Pages\CreateTrigger::route('/create'),
+            'edit' => Pages\EditTrigger::route('/{record}/edit'),
+        ];
+    }
+}
+</file>
+
 <file path="app/Http/Controllers/Api/AuthController.php">
 <?php
 
@@ -1925,20 +2208,6 @@ class AuthController extends Controller
 }
 </file>
 
-<file path="app/Http/Controllers/Api/CatalogController.php">
-<?php
-
-namespace App\Http\Controllers\Api;
-
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-
-class CatalogController extends Controller
-{
-    //
-}
-</file>
-
 <file path="app/Http/Controllers/Api/ClaimController.php">
 <?php
 
@@ -1971,20 +2240,6 @@ class ClaimController extends Controller
 }
 </file>
 
-<file path="app/Http/Controllers/Api/OrdersController.php">
-<?php
-
-namespace App\Http\Controllers\Api;
-
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-
-class OrdersController extends Controller
-{
-    //
-}
-</file>
-
 <file path="app/Http/Controllers/Api/PageController.php">
 <?php
 
@@ -1994,20 +2249,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
 class PageController extends Controller
-{
-    //
-}
-</file>
-
-<file path="app/Http/Controllers/Api/ProfileController.php">
-<?php
-
-namespace App\Http\Controllers\Api;
-
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-
-class ProfileController extends Controller
 {
     //
 }
@@ -2263,37 +2504,6 @@ class UnauthenticatedClaimRequest extends FormRequest
         return new ProcessUnauthenticatedClaimCommand(
             RewardCode::fromString($this->validated()['code'])
         );
-    }
-}
-</file>
-
-<file path="app/Http/Requests/Api/UpdateProfileRequest.php">
-<?php
-
-namespace App\Http\Requests\Api;
-
-use Illuminate\Foundation\Http\FormRequest;
-
-class UpdateProfileRequest extends FormRequest
-{
-    /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
-    {
-        return false;
-    }
-
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
-    public function rules(): array
-    {
-        return [
-            //
-        ];
     }
 }
 </file>
@@ -3114,6 +3324,27 @@ class RewardCode extends Model
         'is_used' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+    ];
+}
+</file>
+
+<file path="app/Models/Trigger.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Trigger extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'name',
+        'event_key',
+        'action_type',
+        'action_value',
     ];
 }
 </file>
@@ -5345,119 +5576,6 @@ final class RankService {
 
         return $this->rankStructureCache;
     }
-}
-</file>
-
-<file path="app/Services/ReferralService.php">
-<?php
-namespace App\Services;
-
-use App\Includes\EventBusInterface;
-use App\Repositories\UserRepository;
-use App\Repositories\ActionLogRepository;
-use App\Infrastructure\WordPressApiWrapperInterface; // <<<--- IMPORT
-
-class ReferralService {
-    private CDPService $cdp_service;
-    private UserRepository $user_repository;
-    private ActionLogRepository $action_log_repository;
-    private EventBusInterface $eventBus;
-    private WordPressApiWrapperInterface $wp; // <<<--- ADD PROPERTY
-
-    public function __construct(
-        CDPService $cdp_service,
-        UserRepository $user_repository,
-        ActionLogRepository $action_log_repository,
-        EventBusInterface $eventBus,
-        WordPressApiWrapperInterface $wp // <<<--- INJECT
-    ) {
-        $this->cdp_service = $cdp_service;
-        $this->user_repository = $user_repository;
-        $this->action_log_repository = $action_log_repository;
-        $this->eventBus = $eventBus;
-        $this->wp = $wp; // <<<--- ASSIGN
-    }
-
-    public function process_new_user_referral(int $new_user_id, string $referral_code) {
-        if (empty($new_user_id) || empty($referral_code)) {
-            return;
-        }
-
-        $referrer_user_id = $this->user_repository->findUserIdByReferralCode($referral_code);
-
-        if ($referrer_user_id) {
-            $new_user_id_vo = \App\Domain\ValueObjects\UserId::fromInt($new_user_id);
-            $referrer_user_id_vo = \App\Domain\ValueObjects\UserId::fromInt($referrer_user_id);
-            $this->user_repository->setReferredBy($new_user_id_vo, $referrer_user_id_vo);
-            $this->execute_triggers('referral_invitee_signed_up', $new_user_id, ['referrer_id' => $referrer_user_id]);
-        }
-    }
-
-    public function handle_referral_conversion(array $payload) {
-        $user_id = $payload['user_snapshot']['identity']['user_id'] ?? 0;
-        if (empty($user_id)) { 
-            return; 
-        }
-
-        if (1 === $this->action_log_repository->countUserActions($user_id, 'scan')) {
-            $user_id_vo = \App\Domain\ValueObjects\UserId::fromInt($user_id);
-            $referrer_user_id = $this->user_repository->getReferringUserId($user_id_vo);
-            
-            if ($referrer_user_id) {
-                $this->execute_triggers('referral_converted', $referrer_user_id, ['invitee_id' => $user_id]);
-            }
-        }
-    }
-    
-    private function execute_triggers(string $event_key, int $user_id, array $context = []) {
-        // <<<--- REFACTOR: Use the wrapper's getPosts method
-        $triggers_to_run = $this->wp->getPosts([
-            'post_type'      => 'canna_trigger',
-            'posts_per_page' => -1,
-            'meta_key'       => 'event_key',
-            'meta_value'     => $event_key,
-        ]);
-
-        if (empty($triggers_to_run)) {
-            return;
-        }
-
-        foreach ($triggers_to_run as $trigger_post) {
-            $action_type = $this->wp->getPostMeta($trigger_post->ID, 'action_type', true);
-            $action_value = $this->wp->getPostMeta($trigger_post->ID, 'action_value', true);
-            
-            if ($action_type === 'grant_points') {
-                $points_to_grant = (int) $action_value;
-                if ($points_to_grant > 0) {
-                    // REFACTOR: Use the injected event bus
-                    $this->eventBus->dispatch('points_to_be_granted', [
-                        'user_id'     => $user_id,
-                        'points'      => $points_to_grant,
-                        'description' => $trigger_post->post_title
-                    ]);
-                }
-            }
-        }
-
-        $this->cdp_service->track($user_id, $event_key, $context);
-    }
-    
-    public function generate_code_for_new_user(int $user_id, string $first_name = ''): string {
-        $base_code_name = !empty($first_name) ? $first_name : 'USER';
-        $base_code      = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $base_code_name), 0, 8));
-        do {
-            $unique_part = strtoupper($this->wp->generatePassword(4, false, false));
-            $new_code    = $base_code . $unique_part;
-            $exists = $this->user_repository->findUserIdByReferralCode($new_code);
-        } while (!is_null($exists));
-        
-        $user_id_vo = new \App\Domain\ValueObjects\UserId($user_id);
-        $this->user_repository->saveReferralCode($user_id_vo, $new_code);
-        return $new_code;
-    }
-    
-    public function get_user_referrals(int $user_id): array { return []; }
-    public function get_nudge_options_for_referee(int $user_id, string $email): array { return []; }
 }
 </file>
 
@@ -8147,6 +8265,34 @@ return new class extends Migration
 };
 </file>
 
+<file path="database/migrations/2025_09_26_012000_create_triggers_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('triggers', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('event_key')->index();
+            $table->string('action_type');
+            $table->string('action_value');
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('triggers');
+    }
+};
+</file>
+
 <file path="database/seeders/DatabaseSeeder.php">
 <?php
 
@@ -8503,43 +8649,6 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
         @endif
     </body>
 </html>
-</file>
-
-<file path="routes/api.php">
-<?php
-
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\SessionController;
-use App\Http\Controllers\Api\RedeemController;
-use App\Http\Controllers\Api\ClaimController;
-
-// --- PUBLIC ROUTES ---
-Route::prefix('rewards/v2')->group(function () {
-    Route::post('/unauthenticated/claim', [ClaimController::class, 'processUnauthenticatedClaim']);
-});
-
-// Using a different prefix for Sanctum's default login
-Route::post('/auth/login', [AuthController::class, 'login']);
-Route::post('/auth/register', [AuthController::class, 'register']);
-Route::post('/auth/register-with-token', [AuthController::class, 'registerWithToken']);
-
-// --- PROTECTED ROUTES ---
-Route::middleware('auth:sanctum')->prefix('rewards/v2')->group(function () {
-    // Session & Profile
-    Route::get('/users/me/session', [SessionController::class, 'getSessionData']);
-    // Route::post('/users/me/profile', [ProfileController::class, 'updateProfile']);
-    
-    // Actions
-    Route::post('/actions/claim', [ClaimController::class, 'processClaim']);
-    Route::post('/actions/redeem', [RedeemController::class, 'processRedemption']);
-
-    // Data
-    // Route::get('/users/me/orders', [OrdersController::class, 'getOrders']);
-    // Route::get('/catalog/products', [CatalogController::class, 'getProducts']);
-    // Route::get('/catalog/products/{id}', [CatalogController::class, 'getProduct']);
-});
 </file>
 
 <file path="routes/console.php">
@@ -23452,201 +23561,6 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 </file>
 
-<file path="realniggainstructions.md">
-Of course. Your intuition is spot-on. The current logic is fragile because the meaning of a "first scan" vs. a "standard scan" is determined by multiple, separate services all inspecting the same generic event (product_scanned) and applying their own conditional logic. This is a classic example of "shotgun surgery" waiting to happen—changing the onboarding rule requires modifying several disconnected files.
-An anti-fragile alternative pushes this decision-making to a single, authoritative source and uses more descriptive, explicit events. Instead of broadcasting one vague event and making everyone else figure it out, we'll broadcast a specific event that already contains the business context.
-Here is the anti-fragile alternative based on Explicit, Self-Describing Events.
-The Principle: Don't Tell Services What Happened, Tell Them The Business Meaning of What Happened.
-The physical action is a "product scan," but the business events are "A New User Onboarded" and "A Regular User Earned Points." We will refactor the system to broadcast these more meaningful events.
-Step 1: Modify the Command Handler to Be the Single Source of Truth
-The ProcessProductScanCommandHandler is the perfect place to make the distinction. It already calculates is_first_scan. Instead of just adding that boolean to a generic payload, we'll use it to dispatch a completely different, more descriptive event.
-File: app/Commands/ProcessProductScanCommandHandler.php
-code
-PHP
-<?php
-namespace App\Commands;
-
-// ... other use statements ...
-use Illuminate\Support\Facades\Log; // Add for better logging
-
-final class ProcessProductScanCommandHandler {
-    // ... constructor and properties are unchanged ...
-
-    public function handle(ProcessProductScanCommand $command): array {
-        Log::info('ProcessProductScanCommandHandler.handle called', [
-            'user_id' => $command->userId->toInt(),
-            'code' => $command->code->value
-        ]);
-        
-        $code_data = $this->rewardCodeRepo->findValidCode($command->code);
-        if (!$code_data) { 
-            Log::info('ProcessProductScanCommandHandler: Code not found or already used');
-            throw new Exception('This code is invalid or has already been used.'); 
-        }
-        
-        $product_id = $this->productRepo->findIdBySku(\App\Domain\ValueObjects\Sku::fromString($code_data->sku));
-        if (!$product_id) { 
-            Log::info('ProcessProductScanCommandHandler: Product not found for SKU', ['sku' => $code_data->sku]);
-            throw new Exception('The product associated with this code could not be found.'); 
-        }
-        
-        // --- ANTI-FRAGILE REFACTOR ---
-
-        // 1. Log the scan to establish its history and count.
-        $this->logService->record($command->userId->toInt(), 'scan', $product_id->toInt());
-        $scan_count = $this->logRepo->countUserActions($command->userId->toInt(), 'scan');
-        $is_first_scan = ($scan_count === 1);
-
-        // 2. Mark the code as used immediately.
-        $this->rewardCodeRepo->markCodeAsUsed($code_data->id, $command->userId);
-        
-        // 3. Build the rich context for the event.
-        $product_post = $product_id ? (object)['ID' => $product_id->toInt()] : null;
-        $context = $this->contextBuilder->build_event_context($command->userId->toInt(), $product_post);
-
-        // 4. BE EXPLICIT: Dispatch a different event based on the business context.
-        if ($is_first_scan) {
-            Log::info('Dispatching "first_product_scanned" event', ['context' => $context]);
-            $this->eventBus->dispatch('first_product_scanned', $context);
-        } else {
-            Log::info('Dispatching "standard_product_scanned" event', ['context' => $context]);
-            $this->eventBus->dispatch('standard_product_scanned', $context);
-        }
-        
-        // 5. Return a generic, immediate success message.
-        $product = $product_id ? $this->wp->getProduct($product_id->toInt()) : null;
-        return [
-            'success' => true,
-            'message' => ($product ? $product->name : 'Product') . ' scanned successfully!',
-        ];
-        // --- END REFACTOR ---
-    }
-}
-Step 2: Simplify the Event-Driven Services (The Payoff)
-Now, our services become beautifully simple. They no longer need conditional logic. They just listen for the exact business event they care about.
-File: app/Services/FirstScanBonusService.php (Now only cares about the first scan)
-code
-PHP
-<?php
-namespace App\Services;
-
-// ... other use statements ...
-
-final class FirstScanBonusService {
-    // ... constructor is unchanged ...
-
-    // RENAMED and SIMPLIFIED
-    public function awardWelcomeGift(array $payload): void {
-        $user_id = $payload['user_snapshot']['identity']['user_id'] ?? 0;
-        
-        // NO MORE CONDITIONAL CHECK! This method only runs for first scans.
-        if ($user_id > 0) {
-            $welcome_reward_id = $this->configService->getWelcomeRewardProductId();
-            if ($welcome_reward_id > 0) {
-                $this->redeemHandler->handle(new RedeemRewardCommand(UserId::fromInt($user_id), \App\Domain\ValueObjects\ProductId::fromInt($welcome_reward_id), []));
-            }
-        }
-    }
-}
-File: app/Services/StandardScanService.php (Now only cares about standard scans)
-code
-PHP
-<?php
-namespace App\Services;
-
-// ... other use statements ...
-
-final class StandardScanService {
-    // ... constructor is unchanged ...
-
-    // RENAMED and SIMPLIFIED
-    public function grantPointsForStandardScan(array $payload): void {
-        Log::info('StandardScanService.grantPointsForStandardScan called', ['payload' => $payload]);
-        
-        $user_id = $payload['user_snapshot']['identity']['user_id'] ?? 0;
-        $product_id = $payload['product_snapshot']['identity']['product_id'] ?? 0;
-        $product_name = $payload['product_snapshot']['identity']['product_name'] ?? 'product';
-
-        // NO MORE CONDITIONAL CHECK! This method only runs for standard scans.
-        if ($user_id > 0 && $product_id > 0) {
-            $base_points = $this->productRepo->getPointsAward(\App\Domain\ValueObjects\ProductId::fromInt($product_id));
-            if ($base_points > 0) {
-                $command = new GrantPointsCommand(
-                    \App\Domain\ValueObjects\UserId::fromInt($user_id),
-                    \App\Domain\ValueObjects\Points::fromInt($base_points),
-                    'Product Scan: ' . $product_name
-                );
-                $this->grantPointsHandler->handle($command);
-            }
-        }
-    }
-}
-Step 3: Update the Event Wiring in the Service Provider
-We just need to update the AppServiceProvider to connect our simplified services to the new, explicit event names.
-File: app/Providers/AppServiceProvider.php
-code
-PHP
-<?php
-namespace App\Providers;
-
-// ... other use statements ...
-
-class AppServiceProvider extends ServiceProvider
-{
-    // ... register() method is unchanged ...
-
-    public function boot(): void
-    {
-        $eventBus = $this->app->make(\App\Includes\EventBusInterface::class);
-        $container = $this->app;
-
-        // --- REWIRED EVENT LISTENERS ---
-
-        // Onboarding logic is now isolated to this single, explicit event.
-        $eventBus->listen('first_product_scanned', function ($payload) use ($container) {
-            $container->make(\App\Services\FirstScanBonusService::class)->awardWelcomeGift($payload);
-        });
-
-        // Standard point-earning logic is also isolated.
-        $eventBus->listen('standard_product_scanned', function ($payload) use ($container) {
-            $container->make(\App\Services\StandardScanService::class)->grantPointsForStandardScan($payload);
-        });
-
-        // Gamification and Referrals can listen to BOTH events if needed, or just one.
-        // For example, maybe an achievement is only for "standard" scans.
-        $events_to_gamify = ['first_product_scanned', 'standard_product_scanned', 'user_rank_changed', 'reward_redeemed'];
-        foreach ($events_to_gamify as $event_name) {
-            $eventBus->listen($event_name, function ($payload, $event) use ($container) {
-                 $container->make(\App\Services\GamificationService::class)->handle_event($payload, $event);
-            });
-        }
-        
-        // A referral conversion should happen on the first REAL scan.
-        $eventBus->listen('first_product_scanned', function ($payload) use ($container) {
-            $container->make(\App\Services\ReferralService::class)->handle_referral_conversion($payload);
-        });
-    }
-}
-Step 4: Fix the Failing Test
-Your OnboardingTest will now pass without any changes to its assertions, because the StandardScanService is no longer even invoked during the first scan flow. The business logic is now guaranteed by the architecture.
-The assertion that was failing is now correct by design:
-File: tests/Feature/OnboardingTest.php
-code
-PHP
-// ... inside the test ...
-
-// This assertion will now pass, because the `standard_product_scanned` event was never fired,
-// meaning the StandardScanService->grantPointsForStandardScan() method was never called.
-$this->assertEquals(0, $newUser->meta['_canna_points_balance']);
-$this->assertEquals(0, $newUser->meta['_canna_lifetime_points']);
-The Anti-Fragile Benefits
-Explicit over Implicit: The event name (first_product_scanned) tells the whole story. A developer doesn't need to read three different service files to understand the onboarding logic.
-Single Responsibility Principle (SRP): FirstScanBonusService is now only responsible for awarding welcome gifts. StandardScanService is now only responsible for awarding standard points. Their responsibilities are pure.
-Open/Closed Principle: If you want to add a new behavior that happens only on the fifth scan, you don't touch any of the existing services. You modify the command handler to dispatch a fifth_product_scanned event and create a new, isolated FifthScanBonusService. The existing code is closed for modification but open for extension.
-Resilience to Change: If the business decides "first scans should now award 50 points and a gift," you only need to add a listener to the first_product_scanned event. You don't have to untangle the logic in StandardScanService.
-This approach creates a robust, clear, and scalable system that is far less prone to breaking when business rules change. It's the essence of building an anti-fragile, event-driven architecture.
-</file>
-
 <file path="repomix.config.json5">
 {
   // This is the main configuration object for the 'pack' command.
@@ -23927,6 +23841,282 @@ export default defineConfig({
         }),
         tailwindcss(),
     ],
+});
+</file>
+
+<file path="app/Http/Controllers/Api/CatalogController.php">
+<?php
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Services\CatalogService;
+use Illuminate\Http\Request;
+
+class CatalogController extends Controller
+{
+    public function __construct(private CatalogService $catalogService) {}
+
+    public function getProducts()
+    {
+        $products = $this->catalogService->get_all_reward_products();
+        return response()->json(['success' => true, 'data' => ['products' => $products]]);
+    }
+
+    public function getProduct(Request $request, int $id)
+    {
+        $userId = $request->user() ? $request->user()->id : 0;
+        $product = $this->catalogService->get_product_with_eligibility($id, $userId);
+        return response()->json(['success' => true, 'data' => $product]);
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Api/OrdersController.php">
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Repositories\OrderRepository;
+use Illuminate\Http\Request;
+
+class OrdersController extends Controller
+{
+    public function __construct(private OrderRepository $orderRepository) {}
+
+    public function getOrders(Request $request)
+    {
+        $orders = $this->orderRepository->getUserOrders($request->user()->id);
+        return response()->json(['success' => true, 'data' => ['orders' => $orders]]);
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Api/ProfileController.php">
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\UpdateProfileRequest;
+use App\Services\UserService;
+use App\Domain\ValueObjects\UserId;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class ProfileController extends Controller
+{
+    public function __construct(private UserService $userService) {}
+
+    public function getProfile(Request $request): JsonResponse
+    {
+        $profileDto = $this->userService->get_full_profile_data(UserId::fromInt($request->user()->id));
+        return response()->json(['success' => true, 'data' => (array) $profileDto]);
+    }
+    
+    public function updateProfile(UpdateProfileRequest $request): JsonResponse
+    {
+        $command = $request->toCommand();
+        $this->userService->handle($command);
+        
+        $updatedProfile = $this->userService->get_full_profile_data(UserId::fromInt($request->user()->id));
+        return response()->json(['success' => true, 'data' => (array) $updatedProfile]);
+    }
+}
+</file>
+
+<file path="app/Http/Requests/Api/UpdateProfileRequest.php">
+<?php
+
+namespace App\Http\Requests\Api;
+
+use App\Commands\UpdateProfileCommand;
+use Illuminate\Foundation\Http\FormRequest;
+
+class UpdateProfileRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'firstName' => 'sometimes|string|max:255',
+            'lastName' => 'sometimes|string|max:255',
+            'phone' => 'sometimes|string|max:20',
+            'custom_fields' => 'sometimes|array',
+        ];
+    }
+
+    public function toCommand(): UpdateProfileCommand
+    {
+        return new UpdateProfileCommand(
+            $this->user()->id,
+            $this->validated()
+        );
+    }
+}
+</file>
+
+<file path="app/Services/ReferralService.php">
+<?php
+namespace App\Services;
+
+use App\Includes\EventBusInterface;
+use App\Repositories\UserRepository;
+use App\Repositories\ActionLogRepository;
+use App\Infrastructure\WordPressApiWrapperInterface; // <<<--- IMPORT
+
+class ReferralService {
+    private CDPService $cdp_service;
+    private UserRepository $user_repository;
+    private ActionLogRepository $action_log_repository;
+    private EventBusInterface $eventBus;
+    private WordPressApiWrapperInterface $wp; // <<<--- ADD PROPERTY
+
+    public function __construct(
+        CDPService $cdp_service,
+        UserRepository $user_repository,
+        ActionLogRepository $action_log_repository,
+        EventBusInterface $eventBus,
+        WordPressApiWrapperInterface $wp // <<<--- INJECT
+    ) {
+        $this->cdp_service = $cdp_service;
+        $this->user_repository = $user_repository;
+        $this->action_log_repository = $action_log_repository;
+        $this->eventBus = $eventBus;
+        $this->wp = $wp; // <<<--- ASSIGN
+    }
+
+    public function process_new_user_referral(int $new_user_id, string $referral_code) {
+        if (empty($new_user_id) || empty($referral_code)) {
+            return;
+        }
+
+        $referrer_user_id = $this->user_repository->findUserIdByReferralCode($referral_code);
+
+        if ($referrer_user_id) {
+            $new_user_id_vo = \App\Domain\ValueObjects\UserId::fromInt($new_user_id);
+            $referrer_user_id_vo = \App\Domain\ValueObjects\UserId::fromInt($referrer_user_id);
+            $this->user_repository->setReferredBy($new_user_id_vo, $referrer_user_id_vo);
+            $this->execute_triggers('referral_invitee_signed_up', $new_user_id, ['referrer_id' => $referrer_user_id]);
+        }
+    }
+
+    public function handle_referral_conversion(array $payload) {
+        $user_id = $payload['user_snapshot']['identity']['user_id'] ?? 0;
+        if (empty($user_id)) { 
+            return; 
+        }
+
+        // In the anti-fragile approach, this method is only called for first scans,
+        // so no need to check scan count here
+        $user_id_vo = \App\Domain\ValueObjects\UserId::fromInt($user_id);
+        $referrer_user_id = $this->user_repository->getReferringUserId($user_id_vo);
+        
+        if ($referrer_user_id) {
+            $this->execute_triggers('referral_converted', $referrer_user_id, ['invitee_id' => $user_id]);
+        }
+    }
+    
+    private function execute_triggers(string $event_key, int $user_id, array $context = []) {
+        // <<<--- REFACTOR: Use the wrapper's getPosts method
+        $triggers_to_run = $this->wp->getPosts([
+            'post_type'      => 'canna_trigger',
+            'posts_per_page' => -1,
+            'meta_key'       => 'event_key',
+            'meta_value'     => $event_key,
+        ]);
+
+        if (empty($triggers_to_run)) {
+            return;
+        }
+
+        foreach ($triggers_to_run as $trigger_post) {
+            $action_type = $this->wp->getPostMeta($trigger_post->ID, 'action_type', true);
+            $action_value = $this->wp->getPostMeta($trigger_post->ID, 'action_value', true);
+            
+            if ($action_type === 'grant_points') {
+                $points_to_grant = (int) $action_value;
+                if ($points_to_grant > 0) {
+                    // REFACTOR: Use the injected event bus
+                    $this->eventBus->dispatch('points_to_be_granted', [
+                        'user_id'     => $user_id,
+                        'points'      => $points_to_grant,
+                        'description' => $trigger_post->post_title
+                    ]);
+                }
+            }
+        }
+
+        $this->cdp_service->track($user_id, $event_key, $context);
+    }
+    
+    public function generate_code_for_new_user(int $user_id, string $first_name = ''): string {
+        $base_code_name = !empty($first_name) ? $first_name : 'USER';
+        $base_code      = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $base_code_name), 0, 8));
+        do {
+            $unique_part = strtoupper($this->wp->generatePassword(4, false, false));
+            $new_code    = $base_code . $unique_part;
+            $exists = $this->user_repository->findUserIdByReferralCode($new_code);
+        } while (!is_null($exists));
+        
+        $user_id_vo = new \App\Domain\ValueObjects\UserId($user_id);
+        $this->user_repository->saveReferralCode($user_id_vo, $new_code);
+        return $new_code;
+    }
+    
+    public function get_user_referrals(int $user_id): array { return []; }
+    public function get_nudge_options_for_referee(int $user_id, string $email): array { return []; }
+}
+</file>
+
+<file path="routes/api.php">
+<?php
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\SessionController;
+use App\Http\Controllers\Api\RedeemController;
+use App\Http\Controllers\Api\ClaimController;
+// ADD THESE IMPORTS
+use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\OrdersController;
+use App\Http\Controllers\Api\CatalogController;
+
+// --- PUBLIC ROUTES ---
+Route::prefix('rewards/v2')->group(function () {
+    Route::post('/unauthenticated/claim', [ClaimController::class, 'processUnauthenticatedClaim']);
+    // ADD PUBLIC CATALOG ROUTES
+    Route::get('/catalog/products', [CatalogController::class, 'getProducts']);
+    Route::get('/catalog/products/{id}', [CatalogController::class, 'getProduct']);
+});
+
+// Auth routes
+Route::prefix('auth')->group(function () {
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/register-with-token', [AuthController::class, 'registerWithToken']);
+});
+
+// --- PROTECTED ROUTES ---
+Route::middleware('auth:sanctum')->prefix('rewards/v2')->group(function () {
+    // Session & Profile
+    Route::get('/users/me/session', [SessionController::class, 'getSessionData']);
+    // ADD PROFILE ROUTES
+    Route::get('/users/me/profile', [ProfileController::class, 'getProfile']);
+    Route::post('/users/me/profile', [ProfileController::class, 'updateProfile']);
+    
+    // Actions
+    Route::post('/actions/claim', [ClaimController::class, 'processClaim']);
+    Route::post('/actions/redeem', [RedeemController::class, 'processRedemption']);
+
+    // Data
+    // UNCOMMENT AND ADD ORDERS ROUTE
+    Route::get('/users/me/orders', [OrdersController::class, 'getOrders']);
 });
 </file>
 

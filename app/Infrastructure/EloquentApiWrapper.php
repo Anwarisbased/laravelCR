@@ -9,8 +9,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Exception as WP_Error;
-use App\Infrastructure\WP_Error as WordPressError; // Add this import
+use Exception as WP_Error; // Use the same alias as the interface
 
 class EloquentApiWrapper implements WordPressApiWrapperInterface
 {
@@ -462,7 +461,79 @@ class EloquentApiWrapper implements WordPressApiWrapperInterface
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Order creation failed: ' . $e->getMessage());
             // Return a WP_Error-like object for compatibility
-            return new WordPressError('order_creation_failed', $e->getMessage());
+            return new WP_Error('order_creation_failed', $e->getMessage());
         }
+    }
+    
+    // Password Reset Functions
+    public function getPasswordResetKey($user): string
+    {
+        // Create a password reset token for the user
+        // In WordPress, this would use wp_generate_password_reset_key
+        $token = Str::random(20); // Generate a unique token
+        
+        // Store the token temporarily (in cache or session) with associated user info
+        // WordPress uses a special table, but we'll use Laravel's cache
+        $cache_key = 'password_reset_' . $user->ID . '_' . $token;
+        Cache::put($cache_key, $user->user_email, 60 * 15); // 15 minutes expiry
+        
+        return $token;
+    }
+
+    public function checkPasswordResetKey(string $key, string $email)
+    {
+        // Check if the password reset key is valid
+        // Find the cached data based on the key and email
+        
+        // WordPress stores reset keys in the usermeta table with a timestamp
+        // For our Laravel implementation, we'll look up in cache
+        
+        // In a real implementation, we'd find all user reset tokens and match the key
+        // For this simplified version, we'll find a matching cache entry
+        
+        // Check if a matching cache key exists
+        $users = User::all();
+        foreach ($users as $user) {
+            $cache_key = 'password_reset_' . $user->id . '_' . $key;
+            $cached_email = Cache::get($cache_key);
+            
+            if ($cached_email === $email) {
+                // Valid key, return user object
+                Cache::forget($cache_key); // Remove the key after use
+                
+                // Return user object that matches Laravel's User model
+                return $this->getUserById($user->id);
+            }
+        }
+        
+        // Key not found or doesn't match the email
+        return new WP_Error('invalid_key', 'Invalid password reset key.');
+    }
+
+    public function resetPassword(object $user, string $newPassword): void
+    {
+        // Reset the user's password
+        $laravel_user = User::find($user->ID);
+        
+        if ($laravel_user) {
+            $laravel_user->password = Hash::make($newPassword);
+            $laravel_user->save();
+        }
+    }
+
+    public function sendMail(string $to, string $subject, string $message, array $headers = []): bool
+    {
+        // In a real implementation, you would send an email
+        // For now, we'll just log it for testing purposes
+        \Illuminate\Support\Facades\Log::info("Email sent to: $to, Subject: $subject, Message: $message");
+        
+        // Return true to indicate success
+        return true;
+    }
+    
+    public function homeUrl(): string
+    {
+        // Return the site URL (for testing, we'll return the app URL)
+        return config('app.url', 'http://localhost');
     }
 }

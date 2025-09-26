@@ -45,6 +45,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'meta' => 'array', // <-- ADD THIS LINE
+            'is_admin' => 'boolean', // Add is_admin field
         ];
     }
 }

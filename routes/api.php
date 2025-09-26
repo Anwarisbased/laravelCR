@@ -24,6 +24,8 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/register-with-token', [AuthController::class, 'registerWithToken']);
+    Route::post('/request-password-reset', [AuthController::class, 'requestPasswordReset']);
+    Route::post('/perform-password-reset', [AuthController::class, 'performPasswordReset']);
 });
 
 // --- PROTECTED ROUTES ---

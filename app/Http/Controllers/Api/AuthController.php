@@ -12,6 +12,8 @@ use App\Models\User;
 // Import the new request classes
 use App\Http\Requests\Api\RegisterUserRequest;
 use App\Http\Requests\Api\RegisterWithTokenRequest;
+use App\Http\Requests\Api\RequestPasswordResetRequest;
+use App\Http\Requests\Api\PerformPasswordResetRequest;
 
 class AuthController extends Controller
 {
@@ -63,5 +65,29 @@ class AuthController extends Controller
         // This will create the user, process their first scan, and return a login token
         // The result is already in the correct format from the service layer.
         return response()->json($result, 200);
+    }
+
+    public function requestPasswordReset(RequestPasswordResetRequest $request, UserService $userService)
+    {
+        $userService->request_password_reset($request->getEmail());
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'If an account with that email exists, a password reset link has been sent.'
+        ]);
+    }
+
+    public function performPasswordReset(PerformPasswordResetRequest $request, UserService $userService)
+    {
+        $userService->perform_password_reset(
+            $request->getToken(),
+            $request->getEmail(),
+            $request->getPassword()
+        );
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Your password has been reset successfully. You can now log in with your new password.'
+        ]);
     }
 }

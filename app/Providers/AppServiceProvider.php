@@ -54,9 +54,6 @@ if (!function_exists('is_email')) {
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         // --- INTERFACE BINDINGS / SINGLETONS ---
@@ -132,9 +129,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Services\ReferralService::class);
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
         $eventBus = $this->app->make(\App\Includes\EventBusInterface::class);

@@ -90,7 +90,7 @@ class ConfigService {
         foreach ($rank_dtos as $dto) {
             $rank_array = (array) $dto;
             $rank_array['benefits'] = [];
-            $ranks_for_api[$dto->key] = $rank_array;
+            $ranks_for_api[(string)$dto->key] = $rank_array;
         }
         return $ranks_for_api;
     }
