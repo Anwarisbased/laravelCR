@@ -3,9 +3,6 @@ namespace App\Services;
 
 use App\Infrastructure\WordPressApiWrapperInterface;
 
-// Exit if accessed directly.
-}
-
 /**
  * Content Service
  *

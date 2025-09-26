@@ -1,15 +1,12 @@
 <?php
 namespace App\Services;
 
-use App\Infrastructure\WordPressApiWrapperInterface; // <<<--- IMPORT THE WRAPPER
+use App\Infrastructure\WordPressApiWrapperInterface;
 
-/**
- * Action Log Service
- */
 class ActionLogService {
-    private WordPressApiWrapperInterface $wp; // <<<--- ADD THE WRAPPER PROPERTY
+    private WordPressApiWrapperInterface $wp;
 
-    public function __construct(WordPressApiWrapperInterface $wp) // <<<--- INJECT THE WRAPPER
+    public function __construct(WordPressApiWrapperInterface $wp)
     {
         $this->wp = $wp;
     }
@@ -17,8 +14,8 @@ class ActionLogService {
     /**
      * Records a user action to the log.
      */
-    public function record(int $user_id, string $action_type, int $object_id = 0, array $meta_data = []): bool {
-        // REFACTOR: Use the wrapper's dbInsert method
+    public function record(int $user_id, string $action_type, int $object_id = 0, array $meta_data = []): bool 
+    {
         $result = $this->wp->dbInsert(
             'canna_user_action_log',
             [
@@ -35,10 +32,11 @@ class ActionLogService {
     /**
      * Fetches a user's point transaction history.
      */
-    public function get_user_points_history( int $user_id, int $limit = 50 ): array {
-        $table_name = 'canna_user_action_log'; // Keep this for clarity
+    public function get_user_points_history(int $user_id, int $limit = 50): array 
+    {
+        $table_name = 'canna_user_action_log';
 
-        // REFACTOR: Use the wrapper's prepare and get_results methods
+        // Use the wrapper's prepare and get_results methods for WordPress DB interaction
         $query = $this->wp->dbPrepare(
             "SELECT meta_data, created_at FROM {$this->wp->db->prefix}{$table_name} 
              WHERE user_id = %d 
@@ -51,13 +49,13 @@ class ActionLogService {
         $results = $this->wp->dbGetResults($query);
 
         $history = [];
-        if ( empty( $results ) ) {
+        if (empty($results)) {
             return $history;
         }
 
-        foreach ( $results as $row ) {
-            $meta = json_decode( $row->meta_data, true );
-            if ( ! is_array( $meta ) || ! isset( $meta['points_change'] ) || ! isset( $meta['description'] ) ) {
+        foreach ($results as $row) {
+            $meta = json_decode($row->meta_data, true);
+            if (!is_array($meta) || !isset($meta['points_change']) || !isset($meta['description'])) {
                 continue;
             }
             $history[] = [

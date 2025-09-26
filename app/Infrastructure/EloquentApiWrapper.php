@@ -54,14 +54,15 @@ class EloquentApiWrapper implements WordPressApiWrapperInterface
         $wpUser->user_login = $user->email; // Using email as login
         $wpUser->user_email = $user->email;
         $wpUser->user_nicename = $user->name; // This might need adjustment
-        $wpUser->user_registered = $user->created_at;
-        $wpUser->user_status = 0;
-        $wpUser->display_name = $user->name;
         
         // Split name into first and last for compatibility
         $nameParts = explode(' ', $user->name, 2);
         $wpUser->first_name = $nameParts[0] ?? '';
         $wpUser->last_name = $nameParts[1] ?? '';
+        
+        $wpUser->user_registered = $user->created_at;
+        $wpUser->user_status = 0;
+        $wpUser->display_name = $user->name;
         
         return $wpUser;
     }

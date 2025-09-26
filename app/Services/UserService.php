@@ -146,7 +146,8 @@ final class UserService {
 
         // Get phone number and referral code from user meta, converting to Value Objects
         $phone_meta = $this->userRepo->getUserMeta($userId, 'phone_number', true);
-        $referral_code_meta = $this->userRepo->getUserMeta($userId, 'referral_code', true);
+        // Fix: Use the correct method to get referral code
+        $referral_code_meta = $this->userRepo->getReferralCode($userId);
         
         $profile_dto = new FullProfileDTO(
             firstName: $user_data->first_name,

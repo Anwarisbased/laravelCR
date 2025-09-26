@@ -117,6 +117,7 @@ class UserRepository {
     
     public function getReferralCode(UserId $userId): ?string {
         $this->loadMetaCache($userId);
+        // Fix: Use the correct meta key constant
         $code = $this->metaCache[$userId->toInt()][MetaKeys::REFERRAL_CODE] ?? null;
         return $code ? (string) $code : null;
     }

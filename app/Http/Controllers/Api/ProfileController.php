@@ -11,20 +11,45 @@ use Illuminate\Http\Request;
 
 class ProfileController extends Controller
 {
-    public function __construct(private UserService $userService) {}
+    private UserService $userService;
+    
+    public function __construct(UserService $userService)
+    {
+        $this->userService = $userService;
+    }
 
+    /**
+     * Get the full profile data for the authenticated user.
+     */
     public function getProfile(Request $request): JsonResponse
     {
         $profileDto = $this->userService->get_full_profile_data(UserId::fromInt($request->user()->id));
-        return response()->json(['success' => true, 'data' => (array) $profileDto]);
+        
+        // DTOs with Value Objects need custom serialization logic to be clean JSON.
+        // A dedicated API Resource class is the Laravel-native way to handle this.
+        // For now, we manually build the response array to match the contract.
+        $data = [
+            'firstName' => $profileDto->firstName,
+            'lastName' => $profileDto->lastName,
+            'phoneNumber' => $profileDto->phoneNumber ? ['value' => (string)$profileDto->phoneNumber] : null,
+            'referralCode' => $profileDto->referralCode ? ['value' => (string)$profileDto->referralCode] : null,
+            'shippingAddress' => (array) $profileDto->shippingAddress,
+            'unlockedAchievementKeys' => $profileDto->unlockedAchievementKeys,
+            'customFields' => $profileDto->customFields,
+        ];
+
+        return response()->json(['success' => true, 'data' => $data]);
     }
     
+    /**
+     * Update the profile for the authenticated user.
+     */
     public function updateProfile(UpdateProfileRequest $request): JsonResponse
     {
         $command = $request->toCommand();
         $this->userService->handle($command);
         
-        $updatedProfile = $this->userService->get_full_profile_data(UserId::fromInt($request->user()->id));
-        return response()->json(['success' => true, 'data' => (array) $updatedProfile]);
+        // Return the fresh profile data after the update
+        return $this->getProfile($request);
     }
 }
