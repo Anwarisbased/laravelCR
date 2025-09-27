@@ -55,14 +55,15 @@ final class CreateUserCommandHandler {
         $this->user_repository->savePointsAndRank($user_id_vo, 0, 0, 'member');
         // --- END REFACTORED LOGIC ---
 
-        // The remaining business logic is unchanged.
-        $this->referral_service->generate_code_for_new_user($user_id, $command->firstName);
-
-        if ($command->referralCode) {
-            $this->referral_service->process_new_user_referral($user_id, (string) $command->referralCode);
-        }
-        
-        $this->eventBus->dispatch('user_created', ['user_id' => $user_id, 'referral_code' => $command->referralCode]);
+        // <<<--- THIS IS THE ONLY CHANGE IN THIS FILE ---
+        // Dispatch the 'user_created' event with the richer payload.
+        // The direct calls to the referral service are now gone from here.
+        $this->eventBus->dispatch('user_created', [
+            'user_id' => $user_id,
+            'firstName' => $command->firstName,
+            'referral_code' => $command->referralCode ? (string)$command->referralCode : null
+        ]);
+        // --- END OF CHANGE ---
         $this->cdp_service->track($user_id, 'user_created', ['signup_method' => 'password', 'referral_code_used' => $command->referralCode]);
 
         return ['success' => true, 'message' => 'Registration successful.', 'userId' => $user_id];

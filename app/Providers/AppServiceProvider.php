@@ -6,6 +6,8 @@ namespace App\Providers;
 use App\Commands\GrantPointsCommandHandler;
 use App\Infrastructure\EloquentApiWrapper;
 use App\Infrastructure\WordPressApiWrapperInterface;
+use App\Models\User;
+use App\Observers\UserObserver;
 use App\Settings\GeneralSettings;
 use Illuminate\Support\ServiceProvider;
 use App\Services\UserService;

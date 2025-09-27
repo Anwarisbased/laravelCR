@@ -23,8 +23,37 @@ class ReferralService {
         $this->user_repository = $user_repository;
         $this->eventBus = $eventBus;
         $this->wp = $wp;
+
+        // <<<--- ADD THIS LISTENER ---
+        $this->eventBus->listen('user_created', [$this, 'onUserCreated']);
     }
 
+    /**
+     * Event listener that triggers when a new user is created.
+     * Responsible for generating their referral code and processing
+     * any referral code they used to sign up.
+     *
+     * @param array $payload The event data from the EventBus.
+     */
+    public function onUserCreated(array $payload): void
+    {
+        $userId = $payload['user_id'] ?? null;
+        $userFirstName = $payload['firstName'] ?? '';
+
+        if (!$userId) {
+            return;
+        }
+
+        // 1. Generate a new referral code for the user who just signed up.
+        $this->generate_code_for_new_user($userId, $userFirstName);
+
+        // 2. If they used a referral code, process it.
+        $referralCodeUsed = $payload['referral_code'] ?? null;
+        if ($referralCodeUsed) {
+            $this->process_new_user_referral($userId, $referralCodeUsed);
+        }
+    }
+    
     // ... (existing methods like process_new_user_referral, handle_referral_conversion, etc. remain here) ...
 
     public function process_new_user_referral(int $new_user_id, string $referral_code) {
@@ -76,6 +105,16 @@ class ReferralService {
         
         $user_id_vo = new \App\Domain\ValueObjects\UserId($user_id);
         $this->user_repository->saveReferralCode($user_id_vo, $new_code);
+        
+        // Also update the Eloquent model's meta array for consistency
+        $user = \App\Models\User::find($user_id);
+        if ($user) {
+            $meta = $user->meta ?? [];
+            $meta['_canna_referral_code'] = $new_code;
+            $user->meta = $meta;
+            $user->save();
+        }
+        
         return $new_code;
     }
 
