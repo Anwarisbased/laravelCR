@@ -6,6 +6,7 @@ namespace App\Providers;
 use App\Commands\GrantPointsCommandHandler;
 use App\Infrastructure\EloquentApiWrapper;
 use App\Infrastructure\WordPressApiWrapperInterface;
+use App\Settings\GeneralSettings;
 use Illuminate\Support\ServiceProvider;
 use App\Services\UserService;
 use App\Services\RankService;
@@ -67,7 +68,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Repositories\ActionLogRepository::class, fn($app) => new \App\Repositories\ActionLogRepository($app->make(WordPressApiWrapperInterface::class)));
         $this->app->singleton(\App\Repositories\AchievementRepository::class, fn($app) => new \App\Repositories\AchievementRepository($app->make(WordPressApiWrapperInterface::class)));
         $this->app->singleton(\App\Repositories\OrderRepository::class, fn($app) => new \App\Repositories\OrderRepository($app->make(WordPressApiWrapperInterface::class)));
-        $this->app->singleton(\App\Repositories\SettingsRepository::class, fn($app) => new \App\Repositories\SettingsRepository($app->make(WordPressApiWrapperInterface::class)));
+        
         $this->app->singleton(\App\Repositories\CustomFieldRepository::class, fn($app) => new \App\Repositories\CustomFieldRepository($app->make(WordPressApiWrapperInterface::class)));
 
         // --- POLICIES ---
@@ -82,7 +83,13 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Services\RankService::class);
         $this->app->singleton(\App\Services\ActionLogService::class);
         $this->app->singleton(\App\Services\ContextBuilderService::class);
-        $this->app->singleton(\App\Services\ConfigService::class);
+        $this->app->singleton(\App\Services\ConfigService::class, function ($app) {
+            return new \App\Services\ConfigService(
+                $app->make(\App\Services\RankService::class),
+                $app->make(WordPressApiWrapperInterface::class),
+                $app->make(\App\Settings\GeneralSettings::class) // <-- Use the new settings class
+            );
+        });
         $this->app->singleton(\App\Services\CDPService::class);
         $this->app->singleton(\App\Services\RulesEngineService::class);
         

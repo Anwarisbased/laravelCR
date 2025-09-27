@@ -1,0 +1,19 @@
+{
+  "pack": {
+    "exclude": [
+      "vendor/",
+      "node_modules/",
+      "public/build/",
+      "public/vendor/",
+      "public/hot",
+      "storage/",
+      "bootstrap/cache/",
+      ".sail/",
+      ".git/",
+      "oldcodebase-repomix-output.xml",
+      "*.log",
+      ".env*",
+      "repomix.config.json"
+    ]
+  }
+}

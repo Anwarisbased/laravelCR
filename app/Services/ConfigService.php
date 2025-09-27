@@ -1,8 +1,8 @@
 <?php
 namespace App\Services;
 
-use App\Repositories\SettingsRepository;
 use App\Infrastructure\WordPressApiWrapperInterface;
+use App\Settings\GeneralSettings; // <-- Import the new settings class
 
 /**
  * Config Service
@@ -12,24 +12,34 @@ use App\Infrastructure\WordPressApiWrapperInterface;
 class ConfigService {
     private RankService $rankService;
     private WordPressApiWrapperInterface $wp;
-    private SettingsRepository $settingsRepo;
+    private GeneralSettings $settings; // <-- Change property type
 
     public function __construct(
         RankService $rankService, 
         WordPressApiWrapperInterface $wp,
-        SettingsRepository $settingsRepo
+        GeneralSettings $settings // <-- Inject the new settings class
     ) {
         $this->rankService = $rankService;
         $this->wp = $wp;
-        $this->settingsRepo = $settingsRepo;
+        $this->settings = $settings; // <-- Assign it
     }
 
     public function getWelcomeRewardProductId(): int {
-        return $this->settingsRepo->getSettings()->welcomeRewardProductId;
+        try {
+            return $this->settings->welcomeRewardProductId ?? 0;
+        } catch (\Spatie\LaravelSettings\Exceptions\MissingSettings $e) {
+            // If settings don't exist, return a default value
+            return 0;
+        }
     }
 
     public function getReferralSignupGiftId(): int {
-        return $this->settingsRepo->getSettings()->referralSignupGiftId;
+        try {
+            return $this->settings->referralSignupGiftId ?? 0;
+        } catch (\Spatie\LaravelSettings\Exceptions\MissingSettings $e) {
+            // If settings don't exist, return a default value
+            return 0;
+        }
     }
 
     public function canUsersRegister(): bool {
@@ -50,15 +60,26 @@ class ConfigService {
      * Assembles the complete application configuration object for the frontend.
      */
     public function get_app_config(): array {
-        $settings = $this->settingsRepo->getSettings();
+        try {
+            $brandPersonality = [
+                'points_name'    => $this->settings->pointsName,
+                'rank_name'      => $this->settings->rankName,
+                'welcome_header' => $this->settings->welcomeHeaderText,
+                'scan_cta'       => $this->settings->scanButtonCta,
+            ];
+        } catch (\Spatie\LaravelSettings\Exceptions\MissingSettings $e) {
+            // If settings don't exist, return default values
+            $brandPersonality = [
+                'points_name'    => 'Points',
+                'rank_name'      => 'Rank',
+                'welcome_header' => 'Welcome, {firstName}',
+                'scan_cta'       => 'Scan Product',
+            ];
+        }
+
         return [
             'settings'         => [
-                'brand_personality' => [
-                    'points_name'    => $settings->pointsName,
-                    'rank_name'      => $settings->rankName,
-                    'welcome_header' => $settings->welcomeHeaderText,
-                    'scan_cta'       => $settings->scanButtonCta,
-                ],
+                'brand_personality' => $brandPersonality,
                 'theme'             => [
                     'primaryFont'        => $this->get_options()['theme_primary_font'] ?? null,
                     'radius'             => $this->get_options()['theme_radius'] ?? null,
