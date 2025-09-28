@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Http\Requests\Api\RegisterUserRequest;
 use App\Http\Requests\Api\RegisterWithTokenRequest;
 use App\Http\Requests\Api\RequestPasswordResetRequest;
+use Exception;
 use App\Http\Requests\Api\PerformPasswordResetRequest;
 
 class AuthController extends Controller
@@ -50,11 +51,26 @@ class AuthController extends Controller
 
     public function register(RegisterUserRequest $request, UserService $userService)
     {
-        $command = $request->toCommand();
-        $result = $userService->handle($command);
+        try {
+            $command = $request->toCommand();
+            $result = $userService->handle($command);
 
-        // This will create the user and return a simple success message
-        return response()->json($result, 201);
+            // This will create the user and return a simple success message
+            return response()->json($result, 201);
+        } catch (Exception $e) {
+            // Check if it's a duplicate email exception
+            if (strpos($e->getMessage(), 'An account with that email already exists') !== false) {
+                return response()->json([
+                    'message' => 'The given data was invalid.',
+                    'errors' => [
+                        'email' => ['An account with that email already exists.']
+                    ]
+                ], 422);
+            }
+            
+            // Re-throw other exceptions
+            throw $e;
+        }
     }
 
     public function registerWithToken(RegisterWithTokenRequest $request, UserService $userService)
@@ -69,25 +85,44 @@ class AuthController extends Controller
 
     public function requestPasswordReset(RequestPasswordResetRequest $request, UserService $userService)
     {
-        $userService->request_password_reset($request->getEmail());
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'If an account with that email exists, a password reset link has been sent.'
-        ]);
+        try {
+            $userService->request_password_reset($request->getEmail());
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'If an account with that email exists, a password reset link has been sent.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while processing your request. Please try again later.'
+            ], 500);
+        }
     }
 
     public function performPasswordReset(PerformPasswordResetRequest $request, UserService $userService)
     {
-        $userService->perform_password_reset(
-            $request->getToken(),
-            $request->getEmail(),
-            $request->getPassword()
-        );
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Your password has been reset successfully. You can now log in with your new password.'
-        ]);
+        try {
+            $userService->perform_password_reset(
+                $request->getToken(),
+                $request->getEmail(),
+                $request->getPassword()
+            );
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Your password has been reset successfully. You can now log in with your new password.'
+            ]);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], $e->getStatusCode());
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }

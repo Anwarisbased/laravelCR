@@ -35,6 +35,7 @@ Route::prefix('auth')->group(function () {
 Route::middleware('auth:sanctum')->prefix('rewards/v2')->group(function () {
     // Session & Profile
     Route::get('/users/me/session', [SessionController::class, 'getSessionData']);
+    Route::post('/users/me/session/logout', [SessionController::class, 'logout']);
     Route::get('/users/me/profile', [ProfileController::class, 'getProfile']);
     Route::post('/users/me/profile', [ProfileController::class, 'updateProfile']);
     Route::get('/users/me/history', [HistoryController::class, 'getHistory']); // NEW

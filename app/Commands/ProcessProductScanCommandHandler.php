@@ -7,8 +7,8 @@ use App\Repositories\ActionLogRepository;
 use App\Services\ActionLogService;
 use App\Services\ContextBuilderService;
 use App\Includes\EventBusInterface;
-use App\Infrastructure\WordPressApiWrapperInterface;
 use Exception;
+use Illuminate\Support\Facades\DB;
 
 final class ProcessProductScanCommandHandler {
     private RewardCodeRepository $rewardCodeRepo;
@@ -17,7 +17,6 @@ final class ProcessProductScanCommandHandler {
     private ActionLogService $logService;
     private EventBusInterface $eventBus;
     private ContextBuilderService $contextBuilder;
-    private WordPressApiWrapperInterface $wp;
 
     public function __construct(
         RewardCodeRepository $rewardCodeRepo,
@@ -25,8 +24,7 @@ final class ProcessProductScanCommandHandler {
         ActionLogRepository $logRepo,
         ActionLogService $logService,
         EventBusInterface $eventBus,
-        ContextBuilderService $contextBuilder,
-        WordPressApiWrapperInterface $wp
+        ContextBuilderService $contextBuilder
     ) {
         $this->rewardCodeRepo = $rewardCodeRepo;
         $this->productRepo = $productRepo;
@@ -34,7 +32,6 @@ final class ProcessProductScanCommandHandler {
         $this->logService = $logService;
         $this->eventBus = $eventBus;
         $this->contextBuilder = $contextBuilder;
-        $this->wp = $wp;
     }
 
     public function handle(ProcessProductScanCommand $command): array {
@@ -60,7 +57,14 @@ final class ProcessProductScanCommandHandler {
         // 1. Log the scan to establish its history and count.
         $this->logService->record($command->userId->toInt(), 'scan', $product_id->toInt());
         $scan_count = $this->logRepo->countUserActions($command->userId->toInt(), 'scan');
+        \Illuminate\Support\Facades\Log::info('ProcessProductScanCommandHandler: Scan count', [
+            'user_id' => $command->userId->toInt(),
+            'scan_count' => $scan_count
+        ]);
         $is_first_scan = ($scan_count === 1);
+        \Illuminate\Support\Facades\Log::info('ProcessProductScanCommandHandler: Is first scan', [
+            'is_first_scan' => $is_first_scan
+        ]);
 
         // 2. Mark the code as used immediately.
         $this->rewardCodeRepo->markCodeAsUsed($code_data->id, $command->userId);
@@ -79,7 +83,11 @@ final class ProcessProductScanCommandHandler {
         }
         
         // 5. Return a generic, immediate success message.
-        $product = $product_id ? $this->wp->getProduct($product_id->toInt()) : null;
+        // In a pure Laravel implementation, we'd have a proper Product model
+        $product = null;
+        if ($product_id) {
+            $product = DB::table('products')->where('id', $product_id->toInt())->first();
+        }
         return [
             'success' => true,
             'message' => ($product ? $product->name : 'Product') . ' scanned successfully!',

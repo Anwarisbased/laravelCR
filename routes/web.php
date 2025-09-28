@@ -68,3 +68,32 @@ Route::get('/admin/download-qr-session/{sessionId}', function ($sessionId) {
         ->header('Content-Type', 'text/csv')
         ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
 })->whereNumber('sessionId')->name('admin.download.qr-session');
+
+// Password reset route
+Route::get('/reset-password/{token}', function ($token) {
+    // This can be a simple page that redirects to the frontend with the token
+    $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
+    return redirect($frontendUrl . '/reset-password?token=' . $token);
+})->name('password.reset');
+
+// Test route for Telescope
+Route::get('/telescope-test', function () {
+    \Illuminate\Support\Facades\Log::info('Telescope test: Accessing test route');
+    
+    // Trigger some queries to be captured by Telescope
+    $usersCount = \App\Models\User::count();
+    
+    // Trigger an exception to be captured by Telescope (will be caught)
+    try {
+        throw new \Exception('Test exception for Telescope');
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('Caught test exception: ' . $e->getMessage());
+    }
+    
+    return [
+        'message' => 'Telescope test completed successfully',
+        'users_count' => $usersCount,
+        'telescope_enabled' => config('telescope.enabled'),
+        'xdebug_loaded' => extension_loaded('xdebug'),
+    ];
+});

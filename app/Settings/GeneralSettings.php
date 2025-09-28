@@ -28,17 +28,6 @@ class GeneralSettings extends Settings
     
     public function booted(): void
     {
-        // Use fillMissing to ensure all properties have values
-        $this->fillMissing([
-            'frontendUrl' => 'http://localhost',
-            'supportEmail' => 'support@example.com',
-            'welcomeRewardProductId' => null,
-            'referralSignupGiftId' => null,
-            'referralBannerText' => '🎁 Earn More By Inviting Your Friends',
-            'pointsName' => 'Points',
-            'rankName' => 'Rank',
-            'welcomeHeaderText' => 'Welcome, {firstName}',
-            'scanButtonCta' => 'Scan Product',
-        ]);
+        // Properties already have default values, no need for fillMissing
     }
 }

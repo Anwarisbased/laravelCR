@@ -41,4 +41,15 @@ class SessionController extends Controller
 
         return response()->json(['success' => true, 'data' => $response_data]);
     }
+    
+    public function logout(Request $request)
+    {
+        // Revoke the token that was used to authenticate this request
+        $request->user()->currentAccessToken()->delete();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Successfully logged out'
+        ]);
+    }
 }

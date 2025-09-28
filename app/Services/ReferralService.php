@@ -3,26 +3,23 @@ namespace App\Services;
 
 use App\Includes\EventBusInterface;
 use App\Repositories\UserRepository;
-use App\Infrastructure\WordPressApiWrapperInterface;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class ReferralService {
     private CDPService $cdp_service;
     private UserRepository $user_repository;
     private EventBusInterface $eventBus;
-    private WordPressApiWrapperInterface $wp;
     
     public function __construct(
         CDPService $cdp_service,
         UserRepository $user_repository,
-        EventBusInterface $eventBus,
-        WordPressApiWrapperInterface $wp
+        EventBusInterface $eventBus
     ) {
         $this->cdp_service = $cdp_service;
         $this->user_repository = $user_repository;
         $this->eventBus = $eventBus;
-        $this->wp = $wp;
 
         // <<<--- ADD THIS LISTENER ---
         $this->eventBus->listen('user_created', [$this, 'onUserCreated']);
@@ -98,7 +95,7 @@ class ReferralService {
         $base_code_name = !empty($first_name) ? $first_name : 'USER';
         $base_code      = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $base_code_name), 0, 8));
         do {
-            $unique_part = strtoupper($this->wp->generatePassword(4, false, false));
+            $unique_part = strtoupper(Str::random(4));
             $new_code    = $base_code . $unique_part;
             $exists = $this->user_repository->findUserIdByReferralCode($new_code);
         } while (!is_null($exists));

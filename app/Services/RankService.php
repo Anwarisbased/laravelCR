@@ -5,16 +5,14 @@ use App\Domain\ValueObjects\Points;
 use App\Domain\ValueObjects\RankKey;
 use App\Repositories\UserRepository;
 use App\DTO\RankDTO;
-use App\Infrastructure\WordPressApiWrapperInterface;
+use Illuminate\Support\Facades\Cache;
 
 final class RankService {
     private UserRepository $userRepository;
-    private WordPressApiWrapperInterface $wp;
     private ?array $rankStructureCache = null;
 
-    public function __construct(UserRepository $userRepository, WordPressApiWrapperInterface $wp) {
+    public function __construct(UserRepository $userRepository) {
         $this->userRepository = $userRepository;
-        $this->wp = $wp;
         // The constructor is now lean. The cache will be loaded on-demand.
     }
 
@@ -54,32 +52,37 @@ final class RankService {
             return $this->rankStructureCache;
         }
 
-        $cachedRanks = $this->wp->getTransient('canna_rank_structure_dtos_v2'); // Use a new cache key
+        $cacheKey = 'canna_rank_structure_dtos_v2';
+        $cachedRanks = Cache::get($cacheKey);
         if (is_array($cachedRanks)) {
             $this->rankStructureCache = $cachedRanks;
             return $this->rankStructureCache;
         }
 
+        // For now, return a default rank structure since we're moving away from WordPress CPTs
         $ranks = [];
-        $args = [
-            'post_type'      => 'canna_rank',
-            'posts_per_page' => -1,
-            'meta_key'       => 'points_required',
-            'orderby'        => 'meta_value_num',
-            'order'          => 'DESC',
-            'post_status'    => 'publish',
-        ];
-        $rankPosts = $this->wp->getPosts($args);
 
-        foreach ($rankPosts as $post) {
-            $dto = new RankDTO(
-                key: RankKey::fromString($post->post_name),
-                name: $post->post_title,
-                pointsRequired: Points::fromInt((int) $this->wp->getPostMeta($post->ID, 'points_required', true)),
-                pointMultiplier: (float) $this->wp->getPostMeta($post->ID, 'point_multiplier', true) ?: 1.0
-            );
-            $ranks[] = $dto;
-        }
+        // Default ranks - in a full implementation, these would come from a proper Eloquent model
+        $ranks[] = new RankDTO(
+            key: RankKey::fromString('bronze'),
+            name: 'Bronze',
+            pointsRequired: Points::fromInt(1000),
+            pointMultiplier: 1.2
+        );
+        
+        $ranks[] = new RankDTO(
+            key: RankKey::fromString('silver'),
+            name: 'Silver',
+            pointsRequired: Points::fromInt(5000),
+            pointMultiplier: 1.5
+        );
+        
+        $ranks[] = new RankDTO(
+            key: RankKey::fromString('gold'),
+            name: 'Gold',
+            pointsRequired: Points::fromInt(10000),
+            pointMultiplier: 2.0
+        );
 
         $memberRank = new RankDTO(
             key: RankKey::fromString('member'),
@@ -89,7 +92,7 @@ final class RankService {
         );
         $ranks[] = $memberRank;
 
-        // Ensure ranks are unique and sorted correctly
+        // Ensure ranks are unique and sorted correctly (DESC order by points required)
         $uniqueRanks = [];
         foreach ($ranks as $rank) {
             $uniqueRanks[(string)$rank->key] = $rank;
@@ -97,7 +100,7 @@ final class RankService {
         $ranks = array_values($uniqueRanks);
         usort($ranks, fn($a, $b) => $b->pointsRequired->toInt() <=> $a->pointsRequired->toInt());
         
-        $this->wp->setTransient('canna_rank_structure_dtos_v2', $ranks, 12 * HOUR_IN_SECONDS);
+        Cache::put($cacheKey, $ranks, 12 * 60 * 60); // 12 hours in seconds
         $this->rankStructureCache = $ranks;
 
         return $this->rankStructureCache;

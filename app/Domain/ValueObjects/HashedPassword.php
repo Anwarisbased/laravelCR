@@ -1,11 +1,13 @@
 <?php
 namespace App\Domain\ValueObjects;
 
+use Illuminate\Support\Facades\Hash;
+
 final class HashedPassword {
     private function __construct(public readonly string $value) {}
 
     public static function fromPlainText(PlainTextPassword $password): self {
-        $hashed = wp_hash_password($password->value);
+        $hashed = Hash::make($password->value);
         return new self($hashed);
     }
 

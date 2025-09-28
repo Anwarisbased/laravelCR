@@ -21,7 +21,17 @@ class SettingsSeeder extends Seeder
             ->exists();
 
         if (!$exists) {
-            (new GeneralSettings())->save();
+            $settings = new GeneralSettings();
+            $settings->frontendUrl = 'http://localhost';
+            $settings->supportEmail = 'support@example.com';
+            $settings->welcomeRewardProductId = 204;
+            $settings->referralSignupGiftId = 1; // Default value, adjust as needed
+            $settings->referralBannerText = '🎁 Earn More By Inviting Your Friends';
+            $settings->pointsName = 'Points';
+            $settings->rankName = 'Rank';
+            $settings->welcomeHeaderText = 'Welcome, {firstName}';
+            $settings->scanButtonCta = 'Scan Product';
+            $settings->save();
         }
     }
 }

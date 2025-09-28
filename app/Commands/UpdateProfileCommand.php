@@ -1,9 +1,6 @@
 <?php
 namespace App\Commands;
 
-// Exit if accessed directly.
-}
-
 /**
  * Command DTO for updating a user's profile.
  */

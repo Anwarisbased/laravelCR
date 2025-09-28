@@ -11,8 +11,8 @@ use App\Repositories\ActionLogRepository;
 use App\Services\ActionLogService;
 use App\Services\ContextBuilderService;
 use App\Includes\EventBusInterface; // <<<--- IMPORT INTERFACE
-use App\Infrastructure\WordPressApiWrapperInterface; // <<<--- IMPORT INTERFACE
 use Exception;
+use Illuminate\Support\Facades\DB;
 
 final class RedeemRewardCommandHandler {
     private ProductRepository $productRepo;
@@ -22,7 +22,6 @@ final class RedeemRewardCommandHandler {
     private ActionLogService $logService;
     private ContextBuilderService $contextBuilder;
     private EventBusInterface $eventBus; // <<<--- ADD PROPERTY
-    private WordPressApiWrapperInterface $wp; // <<<--- CHANGE TO INTERFACE
 
     public function __construct(
         ProductRepository $productRepo,
@@ -31,8 +30,7 @@ final class RedeemRewardCommandHandler {
         ActionLogService $logService,
         ContextBuilderService $contextBuilder,
         ActionLogRepository $logRepo,
-        EventBusInterface $eventBus, // <<<--- ADD DEPENDENCY
-        WordPressApiWrapperInterface $wp // <<<--- CHANGE TO INTERFACE
+        EventBusInterface $eventBus // <<<--- ADD DEPENDENCY
     ) {
         $this->productRepo = $productRepo;
         $this->userRepo = $userRepo;
@@ -41,10 +39,14 @@ final class RedeemRewardCommandHandler {
         $this->contextBuilder = $contextBuilder;
         $this->logRepo = $logRepo;
         $this->eventBus = $eventBus; // <<<--- ASSIGN PROPERTY
-        $this->wp = $wp; // <<<--- ASSIGN WRAPPER PROPERTY
     }
 
     public function handle(RedeemRewardCommand $command): RedeemRewardResultDTO {
+        \Illuminate\Support\Facades\Log::info('RedeemRewardCommandHandler.handle called', [
+            'user_id' => $command->userId->toInt(),
+            'product_id' => $command->productId->toInt()
+        ]);
+        
         $user_id = $command->userId->toInt();
         $product_id = $command->productId->toInt();
         
@@ -53,16 +55,27 @@ final class RedeemRewardCommandHandler {
         $new_balance = $current_balance - $points_cost;
 
         $order_id = $this->orderRepo->createFromRedemption($user_id, $product_id, $command->shippingDetails);
-        if (!$order_id) { throw new Exception('Failed to create order for redemption.'); }
+        if (!$order_id) { 
+            \Illuminate\Support\Facades\Log::error('RedeemRewardCommandHandler: Failed to create order for redemption');
+            throw new Exception('Failed to create order for redemption.'); 
+        }
+        \Illuminate\Support\Facades\Log::info('RedeemRewardCommandHandler: Order created', [
+            'order_id' => $order_id
+        ]);
 
         $this->userRepo->saveShippingAddress($command->userId, $command->shippingDetails);
         $this->userRepo->savePointsAndRank($command->userId, $new_balance, $this->userRepo->getLifetimePoints($command->userId), $this->userRepo->getCurrentRankKey($command->userId));
 
-        $product_name = $this->wp->getTheTitle($product_id);
+        // In a pure Laravel implementation, we'd query the product from the products table
+        $product = DB::table('products')->where('id', $product_id)->first();
+        $product_name = $product ? $product->name : 'Reward';
+        
         $log_meta_data = ['description' => 'Redeemed: ' . $product_name, 'points_change' => -$points_cost, 'new_balance' => $new_balance, 'order_id' => $order_id];
         $this->logService->record($user_id, 'redeem', $product_id, $log_meta_data);
         
-        $full_context = $this->contextBuilder->build_event_context($user_id, $this->wp->getPost($product_id));
+        // Build context without WordPress dependencies
+        $product_post = $product ? (object)['ID' => $product->id] : null;
+        $full_context = $this->contextBuilder->build_event_context($user_id, $product_post);
         
         // REFACTOR: Use the injected event bus
         $this->eventBus->dispatch('reward_redeemed', $full_context);

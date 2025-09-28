@@ -7,6 +7,7 @@ use App\Models\Rank;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use App\Settings\GeneralSettings;
 
 class DatabaseSeeder extends Seeder
 {
@@ -34,6 +35,10 @@ class DatabaseSeeder extends Seeder
         Product::create(['id' => 1, 'name' => 'Test Redemption Product', 'sku' => 'PWT-REDEEM-001', 'points_cost' => 5000]);
         Product::create(['id' => 204, 'name' => 'Laravel Welcome Gift', 'sku' => 'PWT-GIFT-001', 'points_cost' => 0]);
         Product::create(['id' => 205, 'name' => 'Standard Scannable Product', 'sku' => 'PWT-SCAN-001', 'points_award' => 400]);
+        
+        // --- SETTINGS ---
+        // Call the SettingsSeeder to properly seed the settings
+        $this->call(SettingsSeeder::class);
         
         // --- CONFIGURATION ---
         // (This part is fine as is)

@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Domain\ValueObjects\UserId;
 use App\Repositories\ActionLogRepository; // <<<--- IMPORT THE REPOSITORY
-use App\Infrastructure\WordPressApiWrapperInterface; // <<<--- IMPORT THE WRAPPER
+use App\Repositories\UserRepository;
 
 /**
  * Context Builder Service
@@ -13,16 +13,16 @@ class ContextBuilderService {
 
     private RankService $rankService;
     private ActionLogRepository $actionLogRepo; // <<<--- ADD THE REPOSITORY PROPERTY
-    private WordPressApiWrapperInterface $wp; // <<<--- ADD THE WRAPPER PROPERTY
+    private UserRepository $userRepository; // <<<--- ADD THE USER REPOSITORY PROPERTY
 
     public function __construct(
         RankService $rankService,
         ActionLogRepository $actionLogRepo, // <<<--- INJECT THE REPOSITORY
-        WordPressApiWrapperInterface $wp // <<<--- INJECT THE WRAPPER
+        UserRepository $userRepository // <<<--- INJECT THE USER REPOSITORY
     ) {
         $this->rankService = $rankService;
         $this->actionLogRepo = $actionLogRepo;
-        $this->wp = $wp;
+        $this->userRepository = $userRepository;
     }
 
     /**
@@ -40,7 +40,7 @@ class ContextBuilderService {
      * Assembles the complete user_snapshot object according to the Data Taxonomy.
      */
     private function build_user_snapshot( int $user_id ): array {
-        $user = $this->wp->getUserById($user_id);
+        $user = $this->userRepository->getUserCoreData(UserId::fromInt($user_id));
         if ( ! $user ) {
             return [];
         }
@@ -56,14 +56,13 @@ class ContextBuilderService {
         return [
             'identity' => [
                 'user_id'    => $user_id,
-                'email'      => $user->user_email,
-                'first_name' => $user->first_name,
-                'created_at' => $user->user_registered . 'Z',
+                'email'      => $user->email,
+                'first_name' => $user->meta['first_name'] ?? '',
+                'created_at' => $user->created_at . 'Z',
             ],
             'economy'  => [
-                // Also fixing these to use the wrapper for consistency
-                'points_balance' => (int) $this->wp->getUserMeta($user_id, '_canna_points_balance', true),
-                'lifetime_points' => (int) $this->wp->getUserMeta($user_id, '_canna_lifetime_points', true),
+                'points_balance' => $this->userRepository->getPointsBalance($userIdVO),
+                'lifetime_points' => $this->userRepository->getLifetimePoints($userIdVO),
             ],
             'status' => [
                 'rank_key' => (string) $rank_dto->key,
@@ -79,20 +78,17 @@ class ContextBuilderService {
      * Assembles the complete product_snapshot object from a post object.
      */
     private function build_product_snapshot( object $product_post ): array {
-        $product = $this->wp->getProduct($product_post->ID);
-        if ( ! $product ) {
-            return [];
-        }
-
+        // In a pure Laravel implementation, we would have a proper Product model
+        // For now, return a basic structure
         return [
             'identity' => [
-                'product_id'   => $product->id,
-                'sku'          => $product->sku,
-                'product_name' => $product->name,
+                'product_id'   => $product_post->ID ?? 0,
+                'sku'          => $product_post->sku ?? '',
+                'product_name' => $product_post->post_title ?? '',
             ],
             'economy' => [
-                'points_award' => (int) ($product->points_award ?? 0),
-                'points_cost'  => (int) ($product->points_cost ?? 0),
+                'points_award' => (int) ($product_post->points_award ?? 0),
+                'points_cost'  => (int) ($product_post->points_cost ?? 0),
             ],
             'taxonomy' => [
                 'product_form' => 'Vape', // Placeholder

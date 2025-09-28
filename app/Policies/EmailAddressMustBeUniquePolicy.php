@@ -2,12 +2,10 @@
 namespace App\Policies;
 
 use App\Domain\ValueObjects\EmailAddress;
-use App\Infrastructure\WordPressApiWrapperInterface;
+use App\Models\User;
 use Exception;
 
 class EmailAddressMustBeUniquePolicy implements ValidationPolicyInterface {
-    public function __construct(private WordPressApiWrapperInterface $wp) {}
-
     /**
      * @param EmailAddress $value
      */
@@ -16,8 +14,9 @@ class EmailAddressMustBeUniquePolicy implements ValidationPolicyInterface {
             throw new \InvalidArgumentException('This policy requires an EmailAddress object.');
         }
 
-        if ($this->wp->emailExists((string) $value)) {
-            throw new Exception('An account with that email already exists.', 409);
+        $user = User::where('email', (string) $value)->first();
+        if ($user) {
+            throw new Exception('An account with that email already exists.');
         }
     }
 }

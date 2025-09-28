@@ -60,18 +60,18 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // --- INTERFACE BINDINGS / SINGLETONS ---
-        $this->app->singleton(WordPressApiWrapperInterface::class, EloquentApiWrapper::class);
+        // No WordPress wrapper needed anymore - using pure Laravel
         $this->app->singleton(\App\Includes\EventBusInterface::class, \App\Includes\SimpleEventBus::class);
 
-        // --- REPOSITORIES (all depend on the wrapper) ---
-        $this->app->singleton(\App\Repositories\UserRepository::class, fn($app) => new \App\Repositories\UserRepository($app->make(WordPressApiWrapperInterface::class)));
-        $this->app->singleton(\App\Repositories\ProductRepository::class, fn($app) => new \App\Repositories\ProductRepository($app->make(WordPressApiWrapperInterface::class)));
-        $this->app->singleton(\App\Repositories\RewardCodeRepository::class, fn($app) => new \App\Repositories\RewardCodeRepository($app->make(WordPressApiWrapperInterface::class)));
-        $this->app->singleton(\App\Repositories\ActionLogRepository::class, fn($app) => new \App\Repositories\ActionLogRepository($app->make(WordPressApiWrapperInterface::class)));
-        $this->app->singleton(\App\Repositories\AchievementRepository::class, fn($app) => new \App\Repositories\AchievementRepository($app->make(WordPressApiWrapperInterface::class)));
-        $this->app->singleton(\App\Repositories\OrderRepository::class, fn($app) => new \App\Repositories\OrderRepository($app->make(WordPressApiWrapperInterface::class)));
+        // --- REPOSITORIES ---
+        $this->app->singleton(\App\Repositories\UserRepository::class, \App\Repositories\UserRepository::class);
+        $this->app->singleton(\App\Repositories\ProductRepository::class, \App\Repositories\ProductRepository::class);
+        $this->app->singleton(\App\Repositories\RewardCodeRepository::class, \App\Repositories\RewardCodeRepository::class);
+        $this->app->singleton(\App\Repositories\ActionLogRepository::class, \App\Repositories\ActionLogRepository::class);
+        $this->app->singleton(\App\Repositories\AchievementRepository::class, \App\Repositories\AchievementRepository::class);
+        $this->app->singleton(\App\Repositories\OrderRepository::class, \App\Repositories\OrderRepository::class);
         
-        $this->app->singleton(\App\Repositories\CustomFieldRepository::class, fn($app) => new \App\Repositories\CustomFieldRepository($app->make(WordPressApiWrapperInterface::class)));
+        $this->app->singleton(\App\Repositories\CustomFieldRepository::class, \App\Repositories\CustomFieldRepository::class);
 
         // --- POLICIES ---
         $this->app->singleton(\App\Policies\UserMustBeAbleToAffordRedemptionPolicy::class);
@@ -82,17 +82,31 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Policies\RegistrationMustBeEnabledPolicy::class);
 
         // --- SERVICES (wired with autowiring where possible, explicit where needed) ---
-        $this->app->singleton(\App\Services\RankService::class);
+        $this->app->singleton(\App\Services\RankService::class, function ($app) {
+            return new \App\Services\RankService(
+                $app->make(\App\Repositories\UserRepository::class)
+            );
+        });
         $this->app->singleton(\App\Services\ActionLogService::class);
-        $this->app->singleton(\App\Services\ContextBuilderService::class);
+        $this->app->singleton(\App\Services\ContextBuilderService::class, function ($app) {
+            return new \App\Services\ContextBuilderService(
+                $app->make(\App\Services\RankService::class),
+                $app->make(\App\Repositories\ActionLogRepository::class),
+                $app->make(\App\Repositories\UserRepository::class)
+            );
+        });
         $this->app->singleton(\App\Services\ConfigService::class, function ($app) {
             return new \App\Services\ConfigService(
                 $app->make(\App\Services\RankService::class),
-                $app->make(WordPressApiWrapperInterface::class),
-                $app->make(\App\Settings\GeneralSettings::class) // <-- Use the new settings class
+                $app->make(\App\Settings\GeneralSettings::class)
             );
         });
-        $this->app->singleton(\App\Services\CDPService::class);
+        $this->app->singleton(\App\Services\CDPService::class, function ($app) {
+            return new \App\Services\CDPService(
+                $app->make(\App\Services\RankService::class),
+                $app->make(\App\Repositories\UserRepository::class)
+            );
+        });
         $this->app->singleton(\App\Services\RulesEngineService::class);
         
         $this->app->singleton(\App\Services\EconomyService::class, function ($app) {
@@ -125,8 +139,7 @@ class AppServiceProvider extends ServiceProvider
                 $app->make(\App\Services\RankService::class),
                 $app->make(\App\Repositories\CustomFieldRepository::class),
                 $app->make(\App\Repositories\UserRepository::class),
-                $app->make(\App\Repositories\OrderRepository::class),
-                $app->make(WordPressApiWrapperInterface::class)
+                $app->make(\App\Repositories\OrderRepository::class)
             );
         });
 
@@ -135,7 +148,13 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Services\FirstScanBonusService::class);
         $this->app->singleton(\App\Services\StandardScanService::class);
         $this->app->singleton(\App\Services\GamificationService::class);
-        $this->app->singleton(\App\Services\ReferralService::class);
+        $this->app->singleton(\App\Services\ReferralService::class, function ($app) {
+            return new \App\Services\ReferralService(
+                $app->make(\App\Services\CDPService::class),
+                $app->make(\App\Repositories\UserRepository::class),
+                $app->make(\App\Includes\EventBusInterface::class)
+            );
+        });
     }
 
     public function boot(): void

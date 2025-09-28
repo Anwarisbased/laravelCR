@@ -1,43 +1,40 @@
 <?php
 namespace App\Services;
 
-use App\Infrastructure\WordPressApiWrapperInterface;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Content Service
  *
- * Handles fetching and formatting of standard WordPress content like pages.
+ * Handles fetching and formatting of standard content like pages.
  */
 class ContentService {
-    private WordPressApiWrapperInterface $wp;
-
-    public function __construct(WordPressApiWrapperInterface $wp) {
-        $this->wp = $wp;
-    }
 
     /**
-     * Retrieves a WordPress page by its slug and formats it for the API.
+     * Retrieves a page by its slug and formats it for the API.
      *
      * @param string $slug The slug of the page to retrieve.
      * @return array|null An array with page data or null if not found.
      */
     public function get_page_by_slug( string $slug ): ?array {
-        // REFACTOR: Use the wrapper
-        $page = $this->wp->getPageByPath( $slug, OBJECT, 'page' );
+        // In a pure Laravel implementation, we'd query from a pages table
+        // For now, let's return a basic structure since we're removing WordPress dependencies
+        $page = DB::table('pages')->where('slug', $slug)->first();
 
         if ( ! $page ) {
             return null; // Return null if no page is found.
         }
 
-        // REFACTOR: Use the wrapper
-        $content = $this->wp->applyFilters( 'the_content', $page->post_content );
+        // Simulate content processing that WordPress would do
+        $content = $page->content ?? '';
         
         // Remove extra paragraphs that WordPress sometimes adds around content.
         $content = str_replace( ']]>', ']]&gt;', $content );
 
         // Return a clean, formatted array for the API response.
         return [
-            'title'   => $page->post_title,
+            'title'   => $page->title ?? '',
             'content' => $content,
         ];
     }

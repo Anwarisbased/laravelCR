@@ -1,7 +1,7 @@
 <?php
 namespace App\Repositories;
 
-use App\Infrastructure\WordPressApiWrapperInterface;
+use Illuminate\Support\Facades\DB;
 
 // Exit if accessed directly.
 
@@ -10,45 +10,37 @@ use App\Infrastructure\WordPressApiWrapperInterface;
  * Handles all data access for achievement definitions and user progress.
  */
 class AchievementRepository {
-    private WordPressApiWrapperInterface $wp;
     private static $request_cache = [];
-
-    public function __construct(WordPressApiWrapperInterface $wp) {
-        $this->wp = $wp;
-    }
 
     public function findByTriggerEvent(string $event_name): array {
         if (isset(self::$request_cache[$event_name])) {
             return self::$request_cache[$event_name];
         }
 
-        $table_name = 'achievements';
-        $full_table_name = $this->wp->getDbPrefix() . $table_name;
-        $query = $this->wp->dbPrepare(
-            "SELECT * FROM {$full_table_name} WHERE is_active = 1 AND trigger_event = %s",
-            $event_name
-        );
-        $results = $this->wp->dbGetResults($query);
+        $results = DB::table('achievements')
+            ->where('is_active', 1)
+            ->where('trigger_event', $event_name)
+            ->get()
+            ->toArray();
 
         self::$request_cache[$event_name] = $results;
         return $results;
     }
 
     public function getUnlockedKeysForUser(int $user_id): array {
-        $table_name = 'user_achievements';
-        $full_table_name = $this->wp->getDbPrefix() . $table_name;
-        $query = $this->wp->dbPrepare(
-            "SELECT achievement_key FROM {$full_table_name} WHERE user_id = %d",
-            $user_id
-        );
-        return $this->wp->dbGetCol($query);
+        $keys = DB::table('user_achievements')
+            ->where('user_id', $user_id)
+            ->pluck('achievement_key')
+            ->toArray();
+        
+        return $keys;
     }
 
     public function saveUnlockedAchievement(int $user_id, string $achievement_key): void {
-        $this->wp->dbInsert('user_achievements', [
+        DB::table('user_achievements')->insert([
             'user_id'         => $user_id,
             'achievement_key' => $achievement_key,
-            'unlocked_at'     => $this->wp->currentTime('mysql', 1)
+            'unlocked_at'     => now()
         ]);
     }
 }

@@ -3,31 +3,30 @@ namespace App\Commands;
 
 use App\Services\UserService;
 use App\Services\EconomyService;
-use App\Infrastructure\WordPressApiWrapperInterface;
 use App\Domain\ValueObjects\UserId;
 use Exception;
+use Illuminate\Support\Facades\Cache;
 
 final class RegisterWithTokenCommandHandler {
     private UserService $userService;
-    private EconomyService $economyService; // We still need this to dispatch the command
-    private WordPressApiWrapperInterface $wp;
+    private EconomyService $economyService;
 
     public function __construct(
         UserService $userService, 
-        EconomyService $economyService,
-        WordPressApiWrapperInterface $wp
+        EconomyService $economyService
     ) {
         $this->userService = $userService;
         $this->economyService = $economyService;
-        $this->wp = $wp;
     }
 
     /**
      * @throws Exception on failure
      */
     public function handle(RegisterWithTokenCommand $command): array {
-        $claim_code = $this->wp->getTransient('reg_token_' . $command->registration_token);
-        if (false === $claim_code) {
+        $cache_key = 'reg_token_' . $command->registration_token;
+        $claim_code = Cache::get($cache_key);
+        
+        if ($claim_code === null) {
             throw new Exception('Invalid or expired registration token.', 403);
         }
 
@@ -52,14 +51,14 @@ final class RegisterWithTokenCommandHandler {
         // 2. Now that the user exists, dispatch the standard ProcessProductScanCommand.
         // This command is now simple and just broadcasts an event. Our new services will listen and
         // correctly identify it as a first scan.
-        $process_scan_command = new ProcessProductScanCommand(
+        $process_scan_command = new \App\Commands\ProcessProductScanCommand(
             UserId::fromInt($new_user_id), 
             \App\Domain\ValueObjects\RewardCode::fromString($claim_code)
         );
         $this->economyService->handle($process_scan_command);
 
         // 3. All successful, delete the token.
-        $this->wp->deleteTransient('reg_token_' . $command->registration_token);
+        Cache::forget($cache_key);
         
         // 4. Log the user in.
         return $this->userService->login(

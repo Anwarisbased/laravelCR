@@ -5,25 +5,23 @@ use App\Domain\ValueObjects\Sku;
 use App\Repositories\RewardCodeRepository;
 use App\Repositories\ProductRepository;
 use App\Services\ConfigService; // <<<--- IMPORT THE SERVICE
-use App\Infrastructure\WordPressApiWrapperInterface; // <<<--- IMPORT THE WRAPPER
+use Illuminate\Support\Facades\Cache; // <<<--- IMPORT CACHE FACADE FOR TRANSIENTS
+use Illuminate\Support\Facades\Storage; // <<<--- IMPORT STORAGE FACADE
 use Exception;
 
 final class ProcessUnauthenticatedClaimCommandHandler {
     private $reward_code_repository;
     private $product_repository;
     private ConfigService $configService; // <<<--- ADD PROPERTY
-    private WordPressApiWrapperInterface $wp; // <<<--- ADD PROPERTY
 
     public function __construct(
         RewardCodeRepository $reward_code_repository,
         ProductRepository $product_repository,
-        ConfigService $configService, // <<<--- INJECT DEPENDENCY
-        WordPressApiWrapperInterface $wp // <<<--- INJECT DEPENDENCY
+        ConfigService $configService // <<<--- INJECT DEPENDENCY
     ) {
         $this->reward_code_repository = $reward_code_repository;
         $this->product_repository = $product_repository;
         $this->configService = $configService;
-        $this->wp = $wp;
     }
 
     public function handle(ProcessUnauthenticatedClaimCommand $command): array {
@@ -38,12 +36,21 @@ final class ProcessUnauthenticatedClaimCommandHandler {
         }
 
         $registration_token = bin2hex(random_bytes(32));
-        // REFACTOR: Use the wrapper to set the transient
-        $this->wp->setTransient('reg_token_' . $registration_token, (string)$command->code, 15 * 60); // 15 minutes in seconds
+        // REFACTOR: Use Laravel Cache facade instead of WordPress transients
+        Cache::put('reg_token_' . $registration_token, (string)$command->code, 15 * 60); // 15 minutes in seconds
         
         // REFACTOR: Use the injected ConfigService
         $welcome_reward_id = $this->configService->getWelcomeRewardProductId();
-        $product = $welcome_reward_id ? $this->wp->getProduct($welcome_reward_id) : null;
+        
+        // In a pure Laravel implementation, we'd have a proper Product model
+        // For now, let's return a basic placeholder product
+        $product = null;
+        if ($welcome_reward_id) {
+            $product = (object)[
+                'id' => $welcome_reward_id,
+                'name' => 'Welcome Gift',
+            ];
+        }
 
         return [
             'status'             => 'registration_required',
@@ -51,7 +58,7 @@ final class ProcessUnauthenticatedClaimCommandHandler {
             'reward_preview'     => [
                 'id' => $product ? $product->id : 0,
                 'name' => $product ? $product->name : 'Welcome Gift',
-                'image' => $product ? '/storage/products/' . $product->id . '.jpg' : '/images/placeholder.png', // Using Laravel placeholder
+                'image' => $product ? Storage::url('products/' . $product->id . '.jpg') : '/images/placeholder.png', // Using Laravel storage
             ]
         ];
     }

@@ -1,31 +1,30 @@
 <?php
 namespace App\Services;
 
-use App\Infrastructure\WordPressApiWrapperInterface;
 use App\Repositories\ActionLogRepository;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 final class CatalogService {
-    private WordPressApiWrapperInterface $wp;
     private ConfigService $configService;
     private ActionLogRepository $logRepo;
 
-    public function __construct(WordPressApiWrapperInterface $wp, ConfigService $configService, ActionLogRepository $logRepo) {
-        $this->wp = $wp;
+    public function __construct(ConfigService $configService, ActionLogRepository $logRepo) {
         $this->configService = $configService;
         $this->logRepo = $logRepo;
     }
     
     public function get_all_reward_products(): array {
-        // <<<--- REFACTOR: Use the wrapper
-        $products = $this->wp->getProducts([
-            'status' => 'publish',
-            'limit'  => -1,
-        ]);
+        // In a pure Laravel implementation, we'd query from a products table
+        $products = DB::table('products')
+            ->where('status', 'publish')
+            ->whereNotNull('points_cost')
+            ->get();
 
         $formatted_products = [];
         foreach ($products as $product) {
             // Only include products that can be redeemed (i.e., have a points_cost).
-            $points_cost = $product->get_meta('points_cost');
+            $points_cost = $product->points_cost;
             if (!empty($points_cost)) {
                 $formatted_products[] = $this->format_product_for_api($product);
             }
@@ -35,8 +34,8 @@ final class CatalogService {
     }
 
     public function get_product_with_eligibility(int $product_id, int $user_id): ?array {
-        // <<<--- REFACTOR: Use the wrapper
-        $product = $this->wp->getProduct($product_id);
+        // In a pure Laravel implementation, we'd query from a products table
+        $product = DB::table('products')->where('id', $product_id)->first();
         if (!$product) {
             return null;
         }
@@ -67,29 +66,31 @@ final class CatalogService {
      * A helper function to consistently format product data for the API response.
      * This ensures the frontend receives data in the exact structure it expects.
      *
-     * @param \WC_Product $product The WooCommerce product object.
+     * @param object $product The product object.
      * @return array The formatted product data.
      */
     public function format_product_for_api($product): array {
-        $image_id = $product->get_image_id();
-        // Use wrapper methods for WordPress functions
-        $image_url = $image_id ? $this->wp->getAttachmentImageUrl($image_id, 'woocommerce_thumbnail') : $this->wp->getPlaceholderImageSrc();
+        // In a pure Laravel implementation, we'd have proper image handling
+        $image_url = Storage::url('products/' . $product->id . '.jpg');
+        if (!Storage::exists('products/' . $product->id . '.jpg')) {
+            $image_url = '/images/placeholder.png'; // Using Laravel placeholder
+        }
 
         return [
-            'id'          => $product->get_id(),
-            'name'        => $product->get_name(),
-            'description' => $product->get_description(),
+            'id'          => $product->id,
+            'name'        => $product->name,
+            'description' => $product->description ?? '',
             'images'      => [
                 ['src' => $image_url]
             ],
             'meta_data'   => [
                 [
                     'key'   => 'points_cost',
-                    'value' => $product->get_meta('points_cost'),
+                    'value' => $product->points_cost ?? 0,
                 ],
                 [
                     'key'   => '_required_rank',
-                    'value' => $product->get_meta('_required_rank'),
+                    'value' => $product->required_rank ?? '',
                 ],
             ],
         ];
