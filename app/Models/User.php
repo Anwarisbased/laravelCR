@@ -23,6 +23,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'referral_code',
         'meta',
         'lifetime_points',
         'current_rank_key',
@@ -48,10 +49,66 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'referral_code' => 'string',
             'meta' => 'array',
             'is_admin' => 'boolean',
             'lifetime_points' => 'integer',
         ];
+    }
+    
+    public function referrals()
+    {
+        return $this->hasMany(Referral::class, 'referrer_user_id');
+    }
+    
+    public function referredBy()
+    {
+        return $this->hasOne(Referral::class, 'invitee_user_id');
+    }
+    
+    public function getReferralCodeAttribute()
+    {
+        if (!empty($this->attributes['referral_code'])) {
+            return $this->attributes['referral_code'];
+        }
+        
+        return $this->generateReferralCode();
+    }
+    
+    protected function generateReferralCode()
+    {
+        // Generate unique referral code
+        $code = null;
+        $attempts = 0;
+        $maxAttempts = 10; // Prevent infinite loop
+        
+        while (!$code && $attempts < $maxAttempts) {
+            $baseCode = !empty($this->name) ? substr($this->name, 0, 4) : 'USER';
+            $baseCode = strtoupper(preg_replace('/[^a-zA-Z0-9]/', '', $baseCode));
+            $uniquePart = strtoupper(\Illuminate\Support\Str::random(4));
+            $potentialCode = $baseCode . $uniquePart;
+            
+            if (!static::where('referral_code', $potentialCode)->exists()) {
+                $code = $potentialCode;
+            }
+            
+            $attempts++;
+        }
+        
+        // Fallback to random code generation if name-based fails
+        if (!$code) {
+            do {
+                $code = strtoupper(\Illuminate\Support\Str::random(8));
+            } while (static::where('referral_code', $code)->exists());
+        }
+        
+        $this->referral_code = $code;
+        $this->save();
+        
+        // Cache the referral code for quick lookups
+        \Illuminate\Support\Facades\Cache::put("referral_code_{$code}", $this, 3600);
+        
+        return $code;
     }
     
     /**

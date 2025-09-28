@@ -152,9 +152,20 @@ class AppServiceProvider extends ServiceProvider
             return new \App\Services\ReferralService(
                 $app->make(\App\Services\CDPService::class),
                 $app->make(\App\Repositories\UserRepository::class),
-                $app->make(\App\Includes\EventBusInterface::class)
+                $app->make(\App\Includes\EventBusInterface::class),
+                $app->make(\App\Services\ReferralCodeService::class)
             );
         });
+        
+        // Register referral services
+        $this->app->singleton(\App\Services\ReferralCodeService::class);
+        $this->app->singleton(\App\Services\ReferralBonusService::class);
+        $this->app->singleton(\App\Services\ReferralNudgeService::class);
+        
+        // Register referral services
+        $this->app->singleton(\App\Services\ReferralCodeService::class);
+        $this->app->singleton(\App\Services\ReferralBonusService::class);
+        $this->app->singleton(\App\Services\ReferralNudgeService::class);
     }
 
     public function boot(): void

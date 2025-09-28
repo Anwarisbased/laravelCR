@@ -58,4 +58,5 @@ Route::middleware('auth:sanctum')->prefix('rewards/v2')->group(function () {
     Route::get('/users/me/orders', [OrdersController::class, 'getOrders']);
     Route::get('/users/me/referrals', [ReferralController::class, 'getMyReferrals']); // NEW
     Route::post('/users/me/referrals/nudge', [ReferralController::class, 'getNudgeOptions']); // NEW
+    Route::post('/users/me/referrals/process', [ReferralController::class, 'processReferral']); // NEW
 });
