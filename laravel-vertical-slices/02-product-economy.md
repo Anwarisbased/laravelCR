@@ -224,16 +224,16 @@ public function calculatePointsForScan(Product $product, User $user): int
 - Eloquent ORM
 
 ## Definition of Done
-- [ ] User can scan valid QR code and receive confirmation
-- [ ] System rejects invalid or used QR codes with proper error responses
-- [ ] First scan triggers welcome gift redemption via background job
-- [ ] Subsequent scans award appropriate points based on product and rank
-- [ ] Scan history is properly recorded in action_logs table
-- [ ] Events are correctly broadcast and processed by listeners
-- [ ] All operations are properly logged with Laravel logging
-- [ ] Adequate test coverage using Laravel testing features (100% of scan endpoints)
-- [ ] Error handling for edge cases with Laravel exception handling
-- [ ] Performance benchmarks met using caching (response time < 200ms for scan operations)
-- [ ] Background processing via Laravel queues for optimal performance
-- [ ] Proper validation using Laravel Form Requests
-- [ ] Authorization policies enforced for claim operations
+- [x] User can scan valid QR code and receive confirmation
+- [x] System rejects invalid or used QR codes with proper error responses
+- [x] First scan triggers welcome gift redemption via background job
+- [x] Subsequent scans award appropriate points based on product and rank
+- [x] Scan history is properly recorded in action_logs table
+- [x] Events are correctly broadcast and processed by listeners
+- [x] All operations are properly logged with Laravel logging
+- [x] Adequate test coverage using Laravel testing features (100% of scan endpoints)
+- [x] Error handling for edge cases with Laravel exception handling
+- [x] Performance benchmarks met using caching (response time < 200ms for scan operations)
+- [x] Background processing via Laravel queues for optimal performance
+- [x] Proper validation using Laravel Form Requests
+- [x] Authorization policies enforced for claim operations
