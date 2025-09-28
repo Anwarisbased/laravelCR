@@ -13,6 +13,8 @@ use App\Http\Controllers\Api\HistoryController;
 use App\Http\Controllers\Api\ReferralController;
 use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\ConfigController;
+use App\Http\Controllers\Api\RankController;
+use App\Http\Controllers\Api\DashboardController;
 
 // --- PUBLIC ROUTES ---
 Route::prefix('rewards/v2')->group(function () {
@@ -21,6 +23,7 @@ Route::prefix('rewards/v2')->group(function () {
     Route::get('/catalog/products/{id}', [CatalogController::class, 'getProduct']);
     Route::get('/pages/{slug}', [PageController::class, 'getPage']); // NEW
     Route::get('/config', [ConfigController::class, 'getAppConfig']);
+    Route::get('/users/ranks', [RankController::class, 'getRanks']);
 });
 
 Route::prefix('auth')->group(function () {
@@ -42,6 +45,10 @@ Route::middleware('auth:sanctum')->prefix('rewards/v2')->group(function () {
     
     // Dashboard
     Route::get('/users/me/dashboard', [DashboardController::class, 'getDashboardData']);
+    
+    // Rank Progression
+    Route::get('/users/me/rank', [RankController::class, 'getMyRank']);
+    Route::get('/users/{id}/rank', [RankController::class, 'getUserRank']);
     
     // Actions
     Route::post('/actions/claim', [ClaimController::class, 'processClaim']);

@@ -24,6 +24,8 @@ class User extends Authenticatable
         'email',
         'password',
         'meta',
+        'lifetime_points',
+        'current_rank_key',
     ];
 
     /**
@@ -46,8 +48,9 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'meta' => 'array', // <-- ADD THIS LINE
-            'is_admin' => 'boolean', // Add is_admin field
+            'meta' => 'array',
+            'is_admin' => 'boolean',
+            'lifetime_points' => 'integer',
         ];
     }
     
@@ -69,6 +72,37 @@ class User extends Authenticatable
                 $user->ensureReferralCode();
             }
         });
+    }
+    
+    /**
+     * User's current rank relationship
+     */
+    public function rank()
+    {
+        return $this->belongsTo(Rank::class, 'current_rank_key', 'key');
+    }
+    
+    /**
+     * Get the current rank attribute
+     */
+    public function getCurrentRankAttribute()
+    {
+        return $this->rank;
+    }
+    
+    /**
+     * Get the next rank attribute
+     */
+    public function getNextRankAttribute()
+    {
+        $currentRank = $this->rank;
+        if (!$currentRank) {
+            return null;
+        }
+        
+        return Rank::where('points_required', '>', $currentRank->points_required)
+            ->orderBy('points_required')
+            ->first();
     }
     
     /**
