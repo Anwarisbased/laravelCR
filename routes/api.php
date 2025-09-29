@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\OrdersController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\HistoryController;
 use App\Http\Controllers\Api\ReferralController;
+use App\Http\Controllers\Api\AchievementController;
 use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\RankController;
@@ -59,4 +60,10 @@ Route::middleware('auth:sanctum')->prefix('rewards/v2')->group(function () {
     Route::get('/users/me/referrals', [ReferralController::class, 'getMyReferrals']); // NEW
     Route::post('/users/me/referrals/nudge', [ReferralController::class, 'getNudgeOptions']); // NEW
     Route::post('/users/me/referrals/process', [ReferralController::class, 'processReferral']); // NEW
+    
+    // Gamification
+    Route::get('/users/me/achievements', [AchievementController::class, 'userAchievements']);
+    Route::get('/users/me/achievements/locked', [AchievementController::class, 'userLockedAchievements']);
+    Route::get('/users/me/achievements/progress', [AchievementController::class, 'userProgress']);
+    Route::get('/achievements', [AchievementController::class, 'index']);
 });

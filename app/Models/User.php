@@ -172,4 +172,17 @@ class User extends Authenticatable
             $referralService->generate_code_for_new_user($this->id, $this->name ?: 'User');
         }
     }
+    
+    /**
+     * User's unlocked achievements relationship
+     */
+    public function unlockedAchievements()
+    {
+        return $this->belongsToMany(
+            Achievement::class, 
+            'user_achievements', 
+            'user_id', 
+            'achievement_key'
+        )->withPivot('unlocked_at', 'trigger_count')->withTimestamps();
+    }
 }
