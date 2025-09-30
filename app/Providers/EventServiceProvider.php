@@ -18,6 +18,27 @@ class EventServiceProvider extends ServiceProvider
         Registered::class => [
             SendEmailVerificationNotification::class,
         ],
+        \App\Events\UserCreated::class => [
+            \App\Listeners\UserCreatedListener::class,
+        ],
+        \App\Events\FirstProductScanned::class => [
+            \App\Listeners\ReferralConversionListener::class,
+            \App\Listeners\GamificationListener::class,
+            \App\Listeners\FirstScanBonusListener::class,
+        ],
+        \App\Events\StandardProductScanned::class => [
+            \App\Listeners\StandardScannedGamificationListener::class,
+            \App\Listeners\StandardScanListener::class,
+        ],
+        \App\Events\RewardRedeemed::class => [
+            \App\Listeners\RewardRedeemedGamificationListener::class,
+        ],
+        \App\Events\PointsToBeGranted::class => [
+            \App\Listeners\PointsToBeGrantedListener::class,
+        ],
+        \App\Events\UserPointsGranted::class => [
+            \App\Listeners\UserPointsGrantedListener::class,
+        ],
         \App\Events\ReferralInviteeSignedUp::class => [
             // Add listeners if needed
         ],

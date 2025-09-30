@@ -3,7 +3,6 @@ namespace App\Services;
 
 use App\Events\ReferralInviteeSignedUp;
 use App\Events\ReferralConverted;
-use App\Includes\EventBusInterface;
 use App\Jobs\AwardReferralBonus;
 use App\Models\Referral;
 use App\Models\User;
@@ -17,22 +16,16 @@ use Illuminate\Support\Str;
 class ReferralService {
     private CDPService $cdp_service;
     private UserRepository $user_repository;
-    private EventBusInterface $eventBus;
-    private ReferralCodeService $referral_code_service;
+    private ?ReferralCodeService $referral_code_service;
     
     public function __construct(
         CDPService $cdp_service,
         UserRepository $user_repository,
-        EventBusInterface $eventBus,
-        ReferralCodeService $referral_code_service = null // Allow null for backward compatibility
+        ?ReferralCodeService $referral_code_service = null // Allow null for backward compatibility
     ) {
         $this->cdp_service = $cdp_service;
         $this->user_repository = $user_repository;
-        $this->eventBus = $eventBus;
         $this->referral_code_service = $referral_code_service ?: app(ReferralCodeService::class); // Inject if not provided
-
-        // <<<--- ADD THIS LISTENER ---
-        $this->eventBus->listen('user_created', [$this, 'onUserCreated']);
     }
 
     /**
@@ -120,8 +113,26 @@ class ReferralService {
     /**
      * Handle referral conversion when invitee makes first scan.
      */
-    public function handle_referral_conversion(User $invitee)
+    public function handle_referral_conversion($invitee)
     {
+        // Check if invitee is already a User model, or if it's an array payload
+        if (is_array($invitee)) {
+            // Extract user ID from payload and get the User model
+            $userId = $invitee['user']['id'] ?? null;
+            if (!$userId) {
+                return; // Can't process without user ID
+            }
+            $invitee = User::find($userId);
+            if (!$invitee) {
+                return; // User not found
+            }
+        }
+        
+        // Ensure we have a valid User model at this point
+        if (!$invitee instanceof User) {
+            return; // Invalid invitee provided
+        }
+        
         $referral = Referral::where('invitee_user_id', $invitee->id)
             ->where('status', 'signed_up')
             ->first();
@@ -214,10 +225,17 @@ class ReferralService {
         $referrals = $user->referrals()->with('invitee')->get();
         
         return $referrals->map(function ($referral) {
+            // Map internal status to user-friendly status
+            $status = match($referral->status) {
+                'signed_up' => 'Pending',
+                'converted' => 'Converted',
+                default => $referral->status
+            };
+            
             return [
                 'id' => $referral->id,
                 'invitee_email' => $referral->invitee->email,
-                'status' => $referral->status,
+                'status' => $status,
                 'converted_at' => $referral->converted_at,
                 'bonus_points_awarded' => $referral->bonus_points_awarded,
                 'created_at' => $referral->created_at,

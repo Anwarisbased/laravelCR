@@ -4,15 +4,16 @@ namespace App\Commands;
 use App\Domain\ValueObjects\OrderId;
 use App\Domain\ValueObjects\Points;
 use App\DTO\RedeemRewardResultDTO;
+use App\Events\RewardRedeemed;
 use App\Repositories\ProductRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\OrderRepository;
 use App\Repositories\ActionLogRepository;
 use App\Services\ActionLogService;
 use App\Services\ContextBuilderService;
-use App\Includes\EventBusInterface; // <<<--- IMPORT INTERFACE
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 
 final class RedeemRewardCommandHandler {
     private ProductRepository $productRepo;
@@ -21,7 +22,6 @@ final class RedeemRewardCommandHandler {
     private ActionLogRepository $logRepo;
     private ActionLogService $logService;
     private ContextBuilderService $contextBuilder;
-    private EventBusInterface $eventBus; // <<<--- ADD PROPERTY
 
     public function __construct(
         ProductRepository $productRepo,
@@ -29,8 +29,7 @@ final class RedeemRewardCommandHandler {
         OrderRepository $orderRepo,
         ActionLogService $logService,
         ContextBuilderService $contextBuilder,
-        ActionLogRepository $logRepo,
-        EventBusInterface $eventBus // <<<--- ADD DEPENDENCY
+        ActionLogRepository $logRepo
     ) {
         $this->productRepo = $productRepo;
         $this->userRepo = $userRepo;
@@ -38,7 +37,6 @@ final class RedeemRewardCommandHandler {
         $this->logService = $logService;
         $this->contextBuilder = $contextBuilder;
         $this->logRepo = $logRepo;
-        $this->eventBus = $eventBus; // <<<--- ASSIGN PROPERTY
     }
 
     public function handle(RedeemRewardCommand $command): RedeemRewardResultDTO {
@@ -77,8 +75,8 @@ final class RedeemRewardCommandHandler {
         $product_post = $product ? (object)['ID' => $product->id] : null;
         $full_context = $this->contextBuilder->build_event_context($user_id, $product_post);
         
-        // REFACTOR: Use the injected event bus
-        $this->eventBus->dispatch('reward_redeemed', $full_context);
+        // Dispatch Laravel event instead of using custom event bus
+        Event::dispatch(new RewardRedeemed($full_context));
         
         return new RedeemRewardResultDTO(
             OrderId::fromInt($order_id),

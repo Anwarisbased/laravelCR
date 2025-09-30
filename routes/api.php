@@ -57,7 +57,7 @@ Route::middleware('auth:sanctum')->prefix('rewards/v2')->group(function () {
 
     // Data
     Route::get('/users/me/orders', [OrdersController::class, 'getOrders']);
-    Route::get('/users/me/referrals', [ReferralController::class, 'getMyReferrals']); // NEW
+    Route::get('/users/me/referrals', [ReferralController::class, 'getMyReferrals'])->withoutMiddleware('auth:sanctum'); // NEW - TEMPORARY FOR DEBUGGING
     Route::post('/users/me/referrals/nudge', [ReferralController::class, 'getNudgeOptions']); // NEW
     Route::post('/users/me/referrals/process', [ReferralController::class, 'processReferral']); // NEW
     

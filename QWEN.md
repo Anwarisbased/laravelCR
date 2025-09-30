@@ -30,6 +30,7 @@
 - Use Laravel Queues for background processing
 - Use Laravel Cache for performance optimization
 - Use Laravel's testing framework for comprehensive test coverage
+- **TESTING RULE: Only write integration tests, never mock final classes or dependencies. Always test the real behavior and actual implementations.**
 
 ## Key Directories & Files
 - `laravel-vertical-slices/` - Contains implementation plans for different features
@@ -69,6 +70,7 @@
 - Follow DDD principles with Laravel's MVC architecture
 - Use Vite for asset building and frontend development
 - Follow Filament admin panel conventions for admin interfaces
+- **TESTING RULE: Only write integration tests, never mock final classes or dependencies. Always test the real behavior and actual implementations.**
 
 ## Important Notes
 - This is an ongoing migration/implementation project

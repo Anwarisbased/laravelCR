@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Referral;
 use App\Models\User;
 use App\Notifications\ReferralBonusAwardedNotification;
-use App\Services\AppReferralService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
@@ -38,7 +37,7 @@ class ReferralTest extends TestCase
         ]);
 
         $response = $this->actingAs($referrer, 'sanctum')
-            ->getJson('/rewards/v2/users/me/referrals');
+            ->getJson('/api/rewards/v2/users/me/referrals');
 
         $response->assertStatus(200)
             ->assertJson([
@@ -47,9 +46,14 @@ class ReferralTest extends TestCase
                     'referrals' => [
                         [
                             'invitee_email' => $invitee->email,
-                            'status' => 'converted',
+                            'status' => 'Converted',
                             'bonus_points_awarded' => 500,
                         ]
+                    ],
+                    'stats' => [
+                        'total_referrals' => 1,
+                        'converted_referrals' => 1,
+                        'conversion_rate' => 100,
                     ]
                 ]
             ]);
@@ -105,7 +109,7 @@ class ReferralTest extends TestCase
         $user = User::factory()->create();
         
         $response = $this->actingAs($user, 'sanctum')
-            ->postJson('/rewards/v2/users/me/referrals/nudge', [
+            ->postJson('/api/rewards/v2/users/me/referrals/nudge', [
                 'email' => 'newuser@example.com'
             ]);
 
@@ -153,9 +157,16 @@ class ReferralTest extends TestCase
     {
         $referrer = User::factory()->create();
         $invitee = User::factory()->create();
+        
+        // Give a moment for referral codes to be generated
+        usleep(100000); // 100ms delay
+        
+        // Refresh models to ensure referral codes are available
+        $referrer = $referrer->fresh();
+        $invitee = $invitee->fresh();
 
         $response = $this->actingAs($invitee, 'sanctum')
-            ->postJson('/rewards/v2/users/me/referrals/process', [
+            ->postJson('/api/rewards/v2/users/me/referrals/process', [
                 'referral_code' => $referrer->referral_code
             ]);
 

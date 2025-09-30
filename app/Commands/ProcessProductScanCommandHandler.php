@@ -1,21 +1,22 @@
 <?php
 namespace App\Commands;
 
+use App\Events\FirstProductScanned;
+use App\Events\StandardProductScanned;
 use App\Repositories\RewardCodeRepository;
 use App\Repositories\ProductRepository;
 use App\Repositories\ActionLogRepository;
 use App\Services\ActionLogService;
 use App\Services\ContextBuilderService;
-use App\Includes\EventBusInterface;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 
 final class ProcessProductScanCommandHandler {
     private RewardCodeRepository $rewardCodeRepo;
     private ProductRepository $productRepo;
     private ActionLogRepository $logRepo;
     private ActionLogService $logService;
-    private EventBusInterface $eventBus;
     private ContextBuilderService $contextBuilder;
 
     public function __construct(
@@ -23,14 +24,12 @@ final class ProcessProductScanCommandHandler {
         ProductRepository $productRepo,
         ActionLogRepository $logRepo,
         ActionLogService $logService,
-        EventBusInterface $eventBus,
         ContextBuilderService $contextBuilder
     ) {
         $this->rewardCodeRepo = $rewardCodeRepo;
         $this->productRepo = $productRepo;
         $this->logRepo = $logRepo;
         $this->logService = $logService;
-        $this->eventBus = $eventBus;
         $this->contextBuilder = $contextBuilder;
     }
 
@@ -76,10 +75,10 @@ final class ProcessProductScanCommandHandler {
         // 4. BE EXPLICIT: Dispatch a different event based on the business context.
         if ($is_first_scan) {
             \Illuminate\Support\Facades\Log::info('Dispatching "first_product_scanned" event', ['context' => $context]);
-            $this->eventBus->dispatch('first_product_scanned', $context);
+            Event::dispatch(new FirstProductScanned($context));
         } else {
             \Illuminate\Support\Facades\Log::info('Dispatching "standard_product_scanned" event', ['context' => $context]);
-            $this->eventBus->dispatch('standard_product_scanned', $context);
+            Event::dispatch(new StandardProductScanned($context));
         }
         
         // 5. Return a generic, immediate success message.

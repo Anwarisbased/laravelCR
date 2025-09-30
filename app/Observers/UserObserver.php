@@ -2,9 +2,9 @@
 
 namespace App\Observers;
 
+use App\Events\UserCreated;
 use App\Models\User;
-use App\Includes\EventBusInterface;
-use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Event;
 
 class UserObserver
 {
@@ -16,13 +16,12 @@ class UserObserver
         // Reload the user to make sure all attributes are fresh
         $freshUser = $user->fresh();
         
-        // Dispatch user_created event to trigger referral code generation
-        $eventBus = App::make(EventBusInterface::class);
-        $eventBus->dispatch('user_created', [
+        // Dispatch Laravel event to trigger referral code generation
+        Event::dispatch(new UserCreated([
             'user_id' => $freshUser->id,
             'firstName' => $freshUser->name ?: 'User',
             'referral_code' => null // No referral code used when admin creates user
-        ]);
+        ]));
     }
 
     /**
@@ -35,12 +34,11 @@ class UserObserver
         
         // Check if the user doesn't have a referral code, generate one if needed
         if (empty($freshUser->meta['_canna_referral_code'] ?? null)) {
-            $eventBus = App::make(EventBusInterface::class);
-            $eventBus->dispatch('user_created', [
+            Event::dispatch(new UserCreated([
                 'user_id' => $freshUser->id,
                 'firstName' => $freshUser->name ?: 'User',
                 'referral_code' => null
-            ]);
+            ]));
         }
     }
 

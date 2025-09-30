@@ -31,6 +31,12 @@ final class RankService {
                 return $rank;
             }
         }
+        
+        // If rank not found, return default member rank
+        if ($rankKey !== 'member') {
+            return $this->getRankByKey('member');
+        }
+        
         return null;
     }
 
@@ -45,7 +51,7 @@ final class RankService {
         
         // Find the highest rank the user qualifies for
         $qualifyingRanks = $ranks->filter(
-            fn($rank) => $rank->qualifiesFor($lifetimePoints)
+            fn($rank) => $rank->points_required <= $lifetimePoints
         );
         
         return $qualifyingRanks->last() ?? $this->getDefaultRank();
@@ -72,7 +78,13 @@ final class RankService {
         }
         
         // Fallback to the last rank in the array (which would be the lowest due to DESC sorting)
-        return end($ranks) ?: new RankDTO(
+        $lastRank = end($ranks);
+        if ($lastRank) {
+            return $lastRank;
+        }
+        
+        // Final fallback - create a default rank
+        return new RankDTO(
             key: RankKey::fromString('member'),
             name: 'Member',
             pointsRequired: Points::fromInt(0),
@@ -126,7 +138,18 @@ final class RankService {
     private function loadRankStructureFromModel()
     {
         return Cache::remember('rank_structure', 3600, function () {
-            return Rank::active()->ordered()->get();
+            $ranks = Rank::active()->ordered()->get();
+            // If no ranks found, create a default member rank
+            if ($ranks->isEmpty()) {
+                $defaultRank = new Rank();
+                $defaultRank->key = 'member';
+                $defaultRank->name = 'Member';
+                $defaultRank->points_required = 0;
+                $defaultRank->point_multiplier = 1.0;
+                $defaultRank->is_active = true;
+                $ranks = collect([$defaultRank]);
+            }
+            return $ranks;
         });
     }
 
@@ -135,8 +158,24 @@ final class RankService {
      */
     private function getDefaultRank(): ?Rank
     {
-        return Rank::where('key', 'member')->first() 
-            ?? Rank::orderBy('points_required')->first();
+        $memberRank = Rank::where('key', 'member')->first();
+        if ($memberRank) {
+            return $memberRank;
+        }
+        
+        $lowestRank = Rank::orderBy('points_required')->first();
+        if ($lowestRank) {
+            return $lowestRank;
+        }
+        
+        // Create a default member rank if none exists
+        $defaultRank = new Rank();
+        $defaultRank->key = 'member';
+        $defaultRank->name = 'Member';
+        $defaultRank->points_required = 0;
+        $defaultRank->point_multiplier = 1.0;
+        $defaultRank->is_active = true;
+        return $defaultRank;
     }
 
     /**

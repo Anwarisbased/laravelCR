@@ -61,7 +61,6 @@ class AppServiceProvider extends ServiceProvider
     {
         // --- INTERFACE BINDINGS / SINGLETONS ---
         // No WordPress wrapper needed anymore - using pure Laravel
-        $this->app->singleton(\App\Includes\EventBusInterface::class, \App\Includes\SimpleEventBus::class);
 
         // --- REPOSITORIES ---
         $this->app->singleton(\App\Repositories\UserRepository::class, \App\Repositories\UserRepository::class);
@@ -121,7 +120,6 @@ class AppServiceProvider extends ServiceProvider
                 ],
                 $app->make(\App\Services\RankService::class),
                 $app->make(\App\Services\ContextBuilderService::class),
-                $app->make(\App\Includes\EventBusInterface::class),
                 $app->make(\App\Repositories\UserRepository::class),
                 $app->make(\App\Commands\GrantPointsCommandHandler::class)
             );
@@ -152,7 +150,6 @@ class AppServiceProvider extends ServiceProvider
             return new \App\Services\ReferralService(
                 $app->make(\App\Services\CDPService::class),
                 $app->make(\App\Repositories\UserRepository::class),
-                $app->make(\App\Includes\EventBusInterface::class),
                 $app->make(\App\Services\ReferralCodeService::class)
             );
         });
@@ -170,32 +167,7 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $eventBus = $this->app->make(\App\Includes\EventBusInterface::class);
-        $container = $this->app;
-
-        // Lazy-load services only when their trigger event is actually fired.
-
-        // Onboarding logic is now isolated to this single, explicit event.
-        $eventBus->listen('first_product_scanned', function ($payload) use ($container) {
-            $container->make(\App\Services\FirstScanBonusService::class)->awardWelcomeGift($payload);
-        });
-
-        // Standard point-earning logic is also isolated.
-        $eventBus->listen('standard_product_scanned', function ($payload) use ($container) {
-            $container->make(\App\Services\StandardScanService::class)->grantPointsForStandardScan($payload);
-        });
-
-        // This connects 'first_product_scanned' to the referral conversion logic.
-        $eventBus->listen('first_product_scanned', function ($payload) use ($container) {
-            $container->make(\App\Services\ReferralService::class)->handle_referral_conversion($payload);
-        });
-
-        // This connects the Gamification engine to all relevant events.
-        $events_to_gamify = ['first_product_scanned', 'standard_product_scanned', 'user_rank_changed', 'reward_redeemed'];
-        foreach ($events_to_gamify as $event_name) {
-            $eventBus->listen($event_name, function ($payload, $event) use ($container) {
-                 $container->make(\App\Services\GamificationService::class)->handle_event($payload, $event);
-            });
-        }
+        // Event listeners are now registered via EventServiceProvider
+        // This approach uses Laravel's native event system instead of the custom event bus
     }
 }

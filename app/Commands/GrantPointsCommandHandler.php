@@ -3,27 +3,25 @@ namespace App\Commands;
 
 use App\Domain\ValueObjects\Points;
 use App\DTO\GrantPointsResultDTO;
+use App\Events\UserPointsGranted;
 use App\Repositories\UserRepository;
 use App\Services\ActionLogService;
 use App\Services\RankService;
-use App\Includes\EventBusInterface;
+use Illuminate\Support\Facades\Event;
 
 final class GrantPointsCommandHandler {
     private UserRepository $userRepository;
     private ActionLogService $actionLogService;
     private RankService $rankService;
-    private EventBusInterface $eventBus;
 
     public function __construct(
         UserRepository $userRepository,
         ActionLogService $actionLogService,
-        RankService $rankService,
-        EventBusInterface $eventBus
+        RankService $rankService
     ) {
         $this->userRepository = $userRepository;
         $this->actionLogService = $actionLogService;
         $this->rankService = $rankService;
-        $this->eventBus = $eventBus;
     }
 
     public function handle(GrantPointsCommand $command): GrantPointsResultDTO {
@@ -53,8 +51,8 @@ final class GrantPointsCommandHandler {
         ];
         $this->actionLogService->record( $command->userId->toInt(), 'points_granted', 0, $log_meta_data );
         
-        $this->eventBus->dispatch('user_points_granted', ['user_id' => $command->userId->toInt()]);
-        
+        Event::dispatch(new UserPointsGranted(['user_id' => $command->userId->toInt()]));
+
         return new GrantPointsResultDTO(
             Points::fromInt($points_to_grant),
             Points::fromInt($new_balance)

@@ -2,7 +2,6 @@
 namespace App\Services;
 
 use App\Commands\GrantPointsCommand;
-use App\Includes\EventBusInterface; // <<<--- IMPORT INTERFACE
 use App\Repositories\AchievementRepository;
 use App\Repositories\ActionLogRepository;
 use Illuminate\Support\Facades\Log;
@@ -13,22 +12,19 @@ class GamificationService {
     private AchievementRepository $achievement_repository;
     private ActionLogRepository $action_log_repository;
     private RulesEngineService $rules_engine;
-    private EventBusInterface $eventBus; // <<<--- ADD PROPERTY
 
     public function __construct(
         EconomyService $economy_service,
         ActionLogService $action_log_service,
         AchievementRepository $achievement_repository,
         ActionLogRepository $action_log_repository,
-        RulesEngineService $rules_engine,
-        EventBusInterface $eventBus // <<<--- ADD DEPENDENCY
+        RulesEngineService $rules_engine
     ) {
         $this->economy_service = $economy_service;
         $this->action_log_service = $action_log_service;
         $this->achievement_repository = $achievement_repository;
         $this->action_log_repository = $action_log_repository;
         $this->rules_engine = $rules_engine;
-        $this->eventBus = $eventBus; // <<<--- ASSIGN DEPENDENCY
     }
 
     public function handle_event(array $payload, string $event_name) {

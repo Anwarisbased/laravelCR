@@ -4,10 +4,12 @@ namespace App\Services;
 use App\Commands\GrantPointsCommand;
 use App\Commands\GrantPointsCommandHandler;
 use App\Domain\ValueObjects\UserId;
-use App\Includes\EventBusInterface;
+use App\Events\PointsToBeGranted;
+use App\Events\UserPointsGranted;
 use App\Policies\AuthorizationPolicyInterface;
 use App\Policies\ValidationPolicyInterface;
 use App\Repositories\UserRepository;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Exception;
 use Psr\Container\ContainerInterface;
@@ -18,7 +20,6 @@ final class EconomyService {
     private ContainerInterface $container;
     private RankService $rankService;
     private ContextBuilderService $contextBuilder;
-    private EventBusInterface $eventBus;
     private UserRepository $userRepository;
     private GrantPointsCommandHandler $grantPointsHandler;
 
@@ -28,7 +29,6 @@ final class EconomyService {
         array $command_map, // Inject the command map
         RankService $rankService,
         ContextBuilderService $contextBuilder,
-        EventBusInterface $eventBus,
         UserRepository $userRepository,
         GrantPointsCommandHandler $grantPointsHandler
     ) {
@@ -37,13 +37,8 @@ final class EconomyService {
         $this->command_map = $command_map; // Assign the injected map
         $this->rankService = $rankService;
         $this->contextBuilder = $contextBuilder;
-        $this->eventBus = $eventBus;
         $this->userRepository = $userRepository;
         $this->grantPointsHandler = $grantPointsHandler;
-
-        // Register internal event listeners.
-        $this->eventBus->listen('points_to_be_granted', [$this, 'handle_grant_points_event']);
-        $this->eventBus->listen('user_points_granted', [$this, 'handleRankTransitionCheck']);
     }
 
     // This map now declaratively defines all business rules for a command.
@@ -106,43 +101,6 @@ final class EconomyService {
         return $handler->handle($command);
     }
     
-    public function handle_grant_points_event(array $payload) {
-        if (isset($payload['user_id'], $payload['points'], $payload['description'])) {
-            $command = new GrantPointsCommand(
-                UserId::fromInt((int) $payload['user_id']),
-                \App\Domain\ValueObjects\Points::fromInt((int) $payload['points']),
-                (string) $payload['description']
-            );
-            // REFACTOR: Directly call the handler for a cleaner data flow.
-            $this->grantPointsHandler->handle($command);
-        }
-    }
-    
-    public function handleRankTransitionCheck(array $payload) {
-        $user_id = $payload['user_id'] ?? 0;
-        if ($user_id <= 0) return;
-
-        $userIdVO = UserId::fromInt($user_id);
-        $current_rank_key = $this->userRepository->getCurrentRankKey($userIdVO);
-        $new_rank_dto = $this->rankService->getUserRank($userIdVO);
-
-        Log::info("Rank transition check: user_id=$user_id, current_rank=$current_rank_key, new_rank=" . (string)$new_rank_dto->key . ", points_required=" . $new_rank_dto->pointsRequired->toInt());
-
-        if ((string)$new_rank_dto->key !== $current_rank_key) {
-            Log::info("Rank transition: Updating user $user_id from $current_rank_key to " . (string)$new_rank_dto->key);
-            $this->userRepository->savePointsAndRank(
-                $userIdVO,
-                $this->userRepository->getPointsBalance($userIdVO),
-                $this->userRepository->getLifetimePoints($userIdVO),
-                (string)$new_rank_dto->key
-            );
-            
-            $context = $this->contextBuilder->build_event_context($user_id);
-            
-            $this->eventBus->dispatch('user_rank_changed', $context);
-        }
-    }
-    
     public static function createWithDependencies($container): self
     {
         return new self(
@@ -156,7 +114,6 @@ final class EconomyService {
             ],
             $container->make(RankService::class),
             $container->make(ContextBuilderService::class),
-            $container->make(EventBusInterface::class),
             $container->make(UserRepository::class),
             $container->make(\App\Commands\GrantPointsCommandHandler::class)
         );

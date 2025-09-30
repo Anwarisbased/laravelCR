@@ -11,20 +11,21 @@ use App\Services\RulesEngineService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
 
 class AchievementServiceTest extends TestCase
 {
     use RefreshDatabase;
 
     protected $achievementService;
-    protected $rulesEngineService;
 
     protected function setUp(): void
     {
         parent::setUp();
         
-        $this->rulesEngineService = Mockery::mock(RulesEngineService::class)->makePartial();
-        $this->achievementService = new AchievementService($this->rulesEngineService);
+        // Use the real RulesEngineService instead of mocking it
+        $this->achievementService = new AchievementService(new RulesEngineService());
     }
 
     public function test_get_achievements_by_trigger_event()
@@ -58,6 +59,9 @@ class AchievementServiceTest extends TestCase
 
     public function test_evaluate_achievements_with_met_conditions()
     {
+        Event::fake();
+        Queue::fake();
+        
         $user = User::factory()->create();
 
         $achievement = Achievement::create([
@@ -67,32 +71,22 @@ class AchievementServiceTest extends TestCase
             'trigger_count' => 1,
             'points_reward' => 100,
             'is_active' => true,
+            'conditions' => [], // Empty conditions should pass
         ]);
-
-        // Mock that conditions are met
-        $this->rulesEngineService
-            ->shouldReceive('evaluate')
-            ->with($achievement->conditions, ['test' => 'data'])
-            ->andReturn(true);
 
         $this->achievementService->evaluateAchievements($user, 'test_event', ['test' => 'data']);
 
-        $this->assertDatabaseHas('user_achievements', [
-            'user_id' => $user->id,
-            'achievement_key' => 'test_achievement',
-        ]);
-
-        // Check that a job was dispatched to unlock the achievement
-        // Note: In the real implementation, we would check for job dispatches
-        $userAchievement = UserAchievement::where('user_id', $user->id)
-            ->where('achievement_key', 'test_achievement')
-            ->first();
-        
-        $this->assertNotNull($userAchievement);
+        // Verify that the UnlockAchievement job was dispatched
+        Queue::assertPushed(\App\Jobs\UnlockAchievement::class, function ($job) use ($user, $achievement) {
+            return $job->user->id === $user->id && $job->achievement->achievement_key === $achievement->achievement_key;
+        });
     }
 
     public function test_evaluate_achievements_with_unmet_conditions()
     {
+        Event::fake();
+        Queue::fake();
+        
         $user = User::factory()->create();
 
         $achievement = Achievement::create([
@@ -102,14 +96,12 @@ class AchievementServiceTest extends TestCase
             'trigger_count' => 1,
             'points_reward' => 100,
             'is_active' => true,
+            'conditions' => [
+                ['field' => 'user.level', 'operator' => '>', 'value' => 10],
+            ],
         ]);
 
-        // Mock that conditions are NOT met
-        $this->rulesEngineService
-            ->shouldReceive('evaluate')
-            ->with($achievement->conditions, ['test' => 'data'])
-            ->andReturn(false);
-
+        // This should not match since user level is not in the context
         $this->achievementService->evaluateAchievements($user, 'test_event', ['test' => 'data']);
 
         $this->assertDatabaseMissing('user_achievements', [
@@ -120,6 +112,9 @@ class AchievementServiceTest extends TestCase
 
     public function test_evaluate_achievements_skips_already_unlocked()
     {
+        Event::fake();
+        Queue::fake();
+        
         $user = User::factory()->create();
 
         $achievement = Achievement::create([
@@ -129,6 +124,7 @@ class AchievementServiceTest extends TestCase
             'trigger_count' => 1,
             'points_reward' => 100,
             'is_active' => true,
+            'conditions' => [], // Empty conditions should pass
         ]);
 
         // Create the user achievement to simulate already unlocked
@@ -137,10 +133,6 @@ class AchievementServiceTest extends TestCase
             'achievement_key' => 'already_unlocked',
             'unlocked_at' => now(),
         ]);
-
-        // The rules engine should NOT be called since the achievement is already unlocked
-        $this->rulesEngineService
-            ->shouldNotReceive('evaluate');
 
         $this->achievementService->evaluateAchievements($user, 'test_event', ['test' => 'data']);
 

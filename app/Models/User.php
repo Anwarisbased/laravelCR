@@ -183,6 +183,7 @@ class User extends Authenticatable
             'user_achievements', 
             'user_id', 
             'achievement_key'
-        )->withPivot('unlocked_at', 'trigger_count')->withTimestamps();
+        )->whereNotNull('unlocked_at')
+        ->withPivot('unlocked_at', 'trigger_count')->withTimestamps();
     }
 }
