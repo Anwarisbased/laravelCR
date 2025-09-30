@@ -1,7 +1,7 @@
 <?php
 namespace App\Services;
 
-use Illuminate\Support\Facades\DB;
+use App\Models\Page;
 use Illuminate\Support\Str;
 
 /**
@@ -19,8 +19,7 @@ class ContentService {
      */
     public function get_page_by_slug( string $slug ): ?array {
         // In a pure Laravel implementation, we'd query from a pages table
-        // For now, let's return a basic structure since we're removing WordPress dependencies
-        $page = DB::table('pages')->where('slug', $slug)->first();
+        $page = Page::where('slug', $slug)->where('status', 'publish')->first();
 
         if ( ! $page ) {
             return null; // Return null if no page is found.

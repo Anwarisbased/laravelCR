@@ -5,18 +5,9 @@ namespace Tests\Unit;
 use Tests\TestCase;
 use App\Models\User;
 use App\Services\AchievementRewardService;
-use App\Services\EconomyService;
-use App\Commands\GrantPointsCommand;
-use App\Commands\GrantPointsCommandHandler;
-use App\Domain\ValueObjects\UserId;
-use App\Domain\ValueObjects\Points;
-use App\Repositories\UserRepository;
-use App\Services\RankService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Mockery;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Facades\DB;
 
 class AchievementRewardServiceTest extends TestCase
 {
@@ -31,29 +22,21 @@ class AchievementRewardServiceTest extends TestCase
         $this->achievementRewardService = new AchievementRewardService();
     }
 
-    protected function tearDown(): void
-    {
-        Mockery::close();
-        parent::tearDown();
-    }
-
     public function test_grant_reward_creates_and_handles_command()
     {
         Event::fake();
         Queue::fake();
         
-        $user = User::factory()->create();
+        $user = User::factory()->create(['meta' => ['_canna_points_balance' => 500]]);
         $pointsReward = 100;
         $reason = 'Test reward';
 
         // Use the real services
-        $result = $this->achievementRewardService->grantReward($user->id, $pointsReward, $reason);
+        $this->achievementRewardService->grantReward($user->id, $pointsReward, $reason);
         
-        // Verify that the GrantPointsCommand was handled by checking if the job was dispatched
-        // Rather than checking the side effect, we can verify the command was properly constructed
-        // Since the service depends on EconomyService, we can mock just the handle method
-        // to track that it was called with the right parameters
-        $this->assertTrue(true); // Placeholder since we can't easily verify the side effect in this implementation
+        // Verify the user's points balance was updated
+        $user->refresh();
+        $this->assertEquals(600, $user->meta['_canna_points_balance']);
     }
 
     public function test_grant_reward_with_zero_points_does_not_create_command()
@@ -61,15 +44,15 @@ class AchievementRewardServiceTest extends TestCase
         Event::fake();
         Queue::fake();
         
-        $user = User::factory()->create();
-        $initialPoints = $user->lifetime_points;
+        $user = User::factory()->create(['meta' => ['_canna_points_balance' => 500]]);
+        $initialPoints = $user->meta['_canna_points_balance'];
 
         // Use the real services
-        $result = $this->achievementRewardService->grantReward($user->id, 0, 'Test zero reward');
+        $this->achievementRewardService->grantReward($user->id, 0, 'Test zero reward');
         
         // Check that the points were not changed
         $user->refresh();
-        $this->assertEquals($initialPoints, $user->lifetime_points);
+        $this->assertEquals($initialPoints, $user->meta['_canna_points_balance']);
     }
 
     public function test_grant_reward_with_negative_points_does_not_create_command()
@@ -77,14 +60,14 @@ class AchievementRewardServiceTest extends TestCase
         Event::fake();
         Queue::fake();
         
-        $user = User::factory()->create();
-        $initialPoints = $user->lifetime_points;
+        $user = User::factory()->create(['meta' => ['_canna_points_balance' => 500]]);
+        $initialPoints = $user->meta['_canna_points_balance'];
 
         // Use the real services
-        $result = $this->achievementRewardService->grantReward($user->id, -50, 'Test negative reward');
+        $this->achievementRewardService->grantReward($user->id, -50, 'Test negative reward');
         
         // Check that the points were not changed
         $user->refresh();
-        $this->assertEquals($initialPoints, $user->lifetime_points);
+        $this->assertEquals($initialPoints, $user->meta['_canna_points_balance']);
     }
 }

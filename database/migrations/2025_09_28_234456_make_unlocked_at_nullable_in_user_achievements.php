@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -11,7 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement('ALTER TABLE user_achievements MODIFY unlocked_at TIMESTAMP NULL');
+        Schema::table('user_achievements', function (Blueprint $table) {
+            $table->timestamp('unlocked_at')->nullable()->change();
+        });
     }
 
     /**
@@ -19,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement('ALTER TABLE user_achievements MODIFY unlocked_at TIMESTAMP NOT NULL');
+        Schema::table('user_achievements', function (Blueprint $table) {
+            $table->timestamp('unlocked_at')->nullable(false)->change();
+        });
     }
 };

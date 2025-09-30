@@ -8,6 +8,7 @@ use App\Models\Achievement;
 use App\Models\UserAchievement;
 use App\Services\AchievementUnlockService;
 use App\Services\AchievementService;
+use App\Services\RulesEngineService;
 use App\Notifications\AchievementUnlockedNotification;
 use App\Jobs\GrantAchievementReward;
 use App\Events\AchievementUnlocked;
@@ -21,14 +22,15 @@ class AchievementUnlockServiceTest extends TestCase
     use RefreshDatabase;
 
     protected $achievementUnlockService;
-    protected $achievementService;
 
     protected function setUp(): void
     {
         parent::setUp();
         
-        $this->achievementService = $this->mock(AchievementService::class);
-        $this->achievementUnlockService = new AchievementUnlockService($this->achievementService);
+        // Create real dependencies instead of mocking
+        $rulesEngineService = new RulesEngineService();
+        $achievementService = new AchievementService($rulesEngineService);
+        $this->achievementUnlockService = new AchievementUnlockService($achievementService);
     }
 
     public function test_unlock_achievement_creates_user_achievement_record()

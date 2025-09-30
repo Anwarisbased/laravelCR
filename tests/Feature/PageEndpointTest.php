@@ -3,24 +3,26 @@
 namespace Tests\Feature;
 
 use Tests\TestCase;
-use App\Services\ContentService;
+use App\Models\Page;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class PageEndpointTest extends TestCase
 {
     /**
-     * Test fetching a page that exists by mocking the ContentService.
+     * Test fetching a page that exists using integration testing.
      */
     public function test_can_fetch_an_existing_page(): void
     {
-        // ARRANGE: Mock the ContentService to control its output
-        $this->mock(ContentService::class, function ($mock) {
-            $mock->shouldReceive('get_page_by_slug')
-                 ->with('about-us')
-                 ->andReturn([
-                     'title' => 'About Our Company',
-                     'content' => '<p>We are a cool company.</p>'
-                 ]);
-        });
+        // ARRANGE: Ensure the pages table exists and create a page
+        if (Schema::hasTable('pages')) {
+            Page::create([
+                'title' => 'About Our Company',
+                'slug' => 'about-us',
+                'content' => '<p>We are a cool company.</p>',
+                'status' => 'publish'
+            ]);
+        }
 
         // ACT
         $response = $this->getJson('/api/rewards/v2/pages/about-us');
@@ -37,13 +39,6 @@ class PageEndpointTest extends TestCase
      */
     public function test_returns_404_for_non_existent_page(): void
     {
-        // ARRANGE: Mock the ContentService to return null for a specific slug
-        $this->mock(ContentService::class, function ($mock) {
-            $mock->shouldReceive('get_page_by_slug')
-                 ->with('this-page-does-not-exist')
-                 ->andReturn(null);
-        });
-
         // ACT
         $response = $this->getJson('/api/rewards/v2/pages/this-page-does-not-exist');
 

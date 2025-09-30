@@ -1,4 +1,4 @@
-# Laravel Vertical Slice 06: Reward Catalog
+2# Laravel Vertical Slice 06: Reward Catalog
 
 ## Overview
 This vertical slice implements the reward catalog system including product browsing, eligibility checking, and catalog management using Laravel's native features, replacing WooCommerce product integration.

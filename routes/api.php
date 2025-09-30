@@ -20,8 +20,16 @@ use App\Http\Controllers\Api\DashboardController;
 // --- PUBLIC ROUTES ---
 Route::prefix('rewards/v2')->group(function () {
     Route::post('/unauthenticated/claim', [ClaimController::class, 'processUnauthenticatedClaim']);
+    
+    // Catalog routes - specific static routes defined before dynamic ones
     Route::get('/catalog/products', [CatalogController::class, 'getProducts']);
+    Route::get('/catalog/products/v2', [CatalogController::class, 'getProductsV2']);
+    Route::get('/catalog/products/{id}/v2', [CatalogController::class, 'getProductV2']);
     Route::get('/catalog/products/{id}', [CatalogController::class, 'getProduct']);
+    
+    Route::get('/catalog/categories', [CatalogController::class, 'getCategories']);
+    Route::get('/catalog/featured', [CatalogController::class, 'getFeaturedProducts']);
+    Route::get('/catalog/new', [CatalogController::class, 'getNewProducts']);
     Route::get('/pages/{slug}', [PageController::class, 'getPage']); // NEW
     Route::get('/config', [ConfigController::class, 'getAppConfig']);
     Route::get('/users/ranks', [RankController::class, 'getRanks']);
