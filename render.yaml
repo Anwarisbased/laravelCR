@@ -5,7 +5,7 @@ services:
     region: oregon  # or your preferred region
     plan: free      # or choose another plan
     branch: main    # your production branch
-    healthCheckPath: /health  # Simple health check endpoint
+    healthCheckPath: /up  # Laravel's built-in health check endpoint
     envVars:
       - key: APP_ENV
         value: production

@@ -40,6 +40,15 @@ RUN mkdir -p /var/www/html/storage/framework/cache/data && \
 RUN chown -R www-data:www-data /var/www/html/storage
 RUN chown -R www-data:www-data /var/www/html/bootstrap/cache
 
+# Run Laravel setup commands
+RUN php artisan key:generate --ansi || echo "APP_KEY already set"
+RUN php artisan storage:link --ansi
+RUN php artisan config:cache --ansi
+RUN php artisan route:cache --ansi
+RUN php artisan view:cache --ansi
+RUN php artisan migrate --force --ansi
+RUN php artisan db:seed --force --ansi
+
 # Configure Apache
 RUN a2enmod rewrite
 RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
