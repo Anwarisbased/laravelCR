@@ -2,12 +2,12 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use Laravel\Telescope\IncomingEntry;
 use Laravel\Telescope\Telescope;
-use Laravel\Telescope\TelescopeApplicationServiceProvider;
 
-class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
+class TelescopeServiceProvider extends ServiceProvider
 {
     /**
      * Register any application services.
@@ -16,8 +16,6 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
     {
         // Only register telescope services if it's enabled
         if (!$this->app->environment('testing') && config('telescope.enabled', true)) {
-            // Telescope::night();
-
             $this->hideSensitiveRequestDetails();
 
             $isLocal = $this->app->environment('local');
@@ -31,6 +29,17 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
                        $entry->hasMonitoredTag();
             });
         }
+    }
+
+    /**
+     * Bootstrap any application services.
+     */
+    public function boot(): void
+    {
+        // Run parent boot method if it exists
+        parent::boot();
+
+        $this->gate();
     }
 
     /**
