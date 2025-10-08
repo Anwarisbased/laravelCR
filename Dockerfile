@@ -40,14 +40,29 @@ RUN mkdir -p /var/www/html/storage/framework/cache/data && \
 RUN chown -R www-data:www-data /var/www/html/storage
 RUN chown -R www-data:www-data /var/www/html/bootstrap/cache
 
-# Run Laravel setup commands
+# Run Laravel setup commands (excluding migrations which need to run at runtime)
 RUN php artisan key:generate --ansi || echo "APP_KEY already set"
 RUN php artisan storage:link --ansi
 RUN php artisan config:cache --ansi
 RUN php artisan route:cache --ansi
 RUN php artisan view:cache --ansi
-RUN php artisan migrate --force --ansi
-RUN php artisan db:seed --force --ansi
+
+# Create an entrypoint script to run migrations at runtime
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Wait for database to be ready\n\
+until php -r "try { new PDO(\"mysql:host=${DB_HOST:-mysql};port=${DB_PORT:-3306};dbname=${DB_DATABASE:-laravel}\", \"${DB_USERNAME:-sail}\", \"${DB_PASSWORD:-password}\"); echo \"Connected successfully\"; } catch (PDOException \$e) { exit(1); }"; do\n\
+    echo "Waiting for database connection..."\n\
+    sleep 2\n\
+done\n\
+\n\
+# Run migrations and seeders\n\
+php artisan migrate --force\n\
+php artisan db:seed --force\n\
+\n\
+# Start Apache\n\
+apache2-foreground\n' > /var/www/html/entrypoint.sh && chmod +x /var/www/html/entrypoint.sh
 
 # Configure Apache
 RUN a2enmod rewrite
@@ -59,5 +74,5 @@ ENV APACHE_PORT 8080
 
 EXPOSE 8080
 
-# Start Apache
-CMD ["apache2-foreground"]
+# Use our custom entrypoint script
+CMD ["/var/www/html/entrypoint.sh"]
