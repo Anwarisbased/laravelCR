@@ -5,12 +5,14 @@ services:
     region: oregon  # or your preferred region
     plan: free      # or choose another plan
     branch: main    # your production branch
-    healthCheckPath: /api/health
+    healthCheckPath: /health  # Simple health check endpoint
     envVars:
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
         value: false
+      - key: APP_KEY  # This will be generated after deployment
+        sync: false   # Mark as secret
       - key: DB_HOST
         fromDatabase:
           name: cannarewards-db
@@ -31,8 +33,19 @@ services:
         fromDatabase:
           name: cannarewards-db
           property: password
+      # Add other necessary environment variables as needed
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: cannarewards-redis
+          property: connectionString
 
 databases:
   - name: cannarewards-db
+    region: oregon
+    plan: free
+
+redis:
+  - name: cannarewards-redis
     region: oregon
     plan: free

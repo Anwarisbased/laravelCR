@@ -1,4 +1,4 @@
-FROM php:8.2-fpm
+FROM php:8.2-apache
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -9,10 +9,7 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     zip \
     unzip \
-    supervisor
-
-# Clear cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
@@ -21,66 +18,27 @@ RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Set working directory
-WORKDIR /var/www
+WORKDIR /var/www/html
 
 # Copy existing application directory contents
-COPY . /var/www
-
-# Copy existing application directory permissions
-COPY --chown=www-data:www-data . /var/www
+COPY . /var/www/html
 
 # Install Laravel dependencies with Composer
 RUN composer install --no-dev --optimize-autoloader
 
 # Set proper permissions
-RUN chown -R www-data:www-data /var/www/storage
-RUN chown -R www-data:www-data /var/www/bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/storage
+RUN chown -R www-data:www-data /var/www/html/bootstrap/cache
 
-# Install and configure Nginx
-RUN apt-get update && apt-get install -y nginx
+# Configure Apache
+RUN a2enmod rewrite
+RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 
-# Remove default nginx configuration
-RUN rm /etc/nginx/sites-enabled/default
+# Use Render's PORT environment variable or default to 8080
+ENV PORT 8080
+ENV APACHE_PORT 8080
 
-# Create Nginx configuration for Laravel
-RUN echo 'server {
-    listen 8080;
-    index index.php index.html;
-    root /var/www/public;
-    
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-    
-    location ~ \.php$ {
-        fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_param PATH_INFO $fastcgi_path_info;
-    }
-}' > /etc/nginx/sites-available/laravel
-
-# Enable the site
-RUN ln -s /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
-
-# Expose port
 EXPOSE 8080
 
-# Create supervisord configuration to run both PHP-FPM and Nginx
-RUN echo '[supervisord]
-nodaemon=true
-user=root
-
-[program:php-fpm]
-command=/usr/sbin/php-fpm8.2 -F
-priority=10
-
-[program:nginx]
-command=/usr/sbin/nginx -g "daemon off;"
-priority=20
-' > /etc/supervisor/conf.d/supervisord.conf
-
-# Start supervisord to run both services
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Start Apache
+CMD ["apache2-foreground"]
