@@ -1,0 +1,37 @@
+APP_NAME="Cannarewards API"
+APP_ENV=production
+APP_KEY=base64:  # This will be generated during deployment
+APP_DEBUG=false
+APP_URL=https://your-app.onrender.com
+
+# Database Configuration - these will be provided by Render
+DB_CONNECTION=mysql
+DB_HOST=  # Will be provided by Render
+DB_PORT=3306
+DB_DATABASE=  # Will be provided by Render
+DB_USERNAME=  # Will be provided by Render
+DB_PASSWORD=  # Will be provided by Render
+
+# Redis Configuration (if using Redis add-on)
+REDIS_CLIENT=phpredis
+REDIS_HOST=  # Will be provided by Render if using Redis
+REDIS_PASSWORD=  # Will be provided by Render if using Redis
+REDIS_PORT=6379
+
+# Cache and Session Configuration
+CACHE_STORE=database  # Change to 'redis' if using Redis
+SESSION_DRIVER=database  # Change to 'redis' if using Redis
+SESSION_LIFETIME=120
+
+# Queue Configuration
+QUEUE_CONNECTION=database  # Change to 'redis' if using Redis
+
+# Mail Configuration
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=your_smtp_username  # Replace with your actual SMTP username
+MAIL_PASSWORD=your_smtp_password  # Replace with your actual SMTP password
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=noreply@your-app.onrender.com
+MAIL_FROM_NAME="Cannarewards API"
