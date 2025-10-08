@@ -29,6 +29,13 @@ COPY . /var/www/html
 # Install Laravel dependencies with Composer
 RUN composer install --no-dev --optimize-autoloader
 
+# Create storage directories if they don't exist
+RUN mkdir -p /var/www/html/storage/framework/cache/data && \
+    mkdir -p /var/www/html/storage/framework/sessions && \
+    mkdir -p /var/www/html/storage/framework/views && \
+    mkdir -p /var/www/html/storage/logs && \
+    mkdir -p /var/www/html/bootstrap/cache
+
 # Set proper permissions
 RUN chown -R www-data:www-data /var/www/html/storage
 RUN chown -R www-data:www-data /var/www/html/bootstrap/cache
