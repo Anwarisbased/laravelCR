@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN apt-get install -y libicu-dev libzip-dev \
+RUN apt-get update && apt-get install -y libicu-dev libzip-dev \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
     && docker-php-ext-configure intl \
     && docker-php-ext-install intl
