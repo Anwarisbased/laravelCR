@@ -6,7 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use App\Domain\ValueObjects\UserId;
+use App\Data\SessionData;
 
+/**
+ * Session Controller
+ * 
+ * This controller handles user session data.
+ * 
+ * All responses follow the format:
+ * {
+ *   "success": true,
+ *   "data": { ... }
+ * }
+ */
 class SessionController extends Controller
 {
     public function getSessionData(Request $request)
@@ -20,26 +32,10 @@ class SessionController extends Controller
         // The service doesn't know it's running in Laravel.
         $sessionDto = $userService->get_user_session_data(UserId::fromInt($userId));
 
-        // We need to convert the DTO to a JSON-friendly array for the response.
-        // This can be cleaned up later with API Resources, but this works for now.
-        $response_data = [
-            'id' => $sessionDto->id->toInt(),
-            'firstName' => $sessionDto->firstName,
-            'lastName' => $sessionDto->lastName,
-            'email' => (string) $sessionDto->email,
-            'points_balance' => $sessionDto->pointsBalance->toInt(),
-            'rank' => [
-                'key' => (string) $sessionDto->rank->key,
-                'name' => $sessionDto->rank->name,
-                'points' => $sessionDto->rank->pointsRequired->toInt(),
-                'point_multiplier' => $sessionDto->rank->pointMultiplier
-            ],
-            'shipping' => $sessionDto->shippingAddress ? (array) $sessionDto->shippingAddress : null,
-            'referral_code' => $sessionDto->referralCode,
-            'feature_flags' => $sessionDto->featureFlags,
-        ];
+        // Convert Session DTO to standardized Data object
+        $sessionData = SessionData::fromSessionDto($sessionDto);
 
-        return response()->json(['success' => true, 'data' => $response_data]);
+        return response()->json($sessionData);
     }
     
     public function logout(Request $request)

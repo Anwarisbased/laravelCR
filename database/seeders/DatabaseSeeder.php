@@ -32,9 +32,9 @@ class DatabaseSeeder extends Seeder
         Rank::create(['name' => 'Gold',   'key' => 'gold',   'points_required' => 10000, 'point_multiplier' => 2.0]);
 
         // --- PRODUCTS ---
-        Product::create(['id' => 1, 'name' => 'Test Redemption Product', 'sku' => 'PWT-REDEEM-001', 'points_cost' => 5000]);
-        Product::create(['id' => 204, 'name' => 'Laravel Welcome Gift', 'sku' => 'PWT-GIFT-001', 'points_cost' => 0]);
-        Product::create(['id' => 205, 'name' => 'Standard Scannable Product', 'sku' => 'PWT-SCAN-001', 'points_award' => 400]);
+        Product::create(['name' => 'Test Redemption Product', 'sku' => 'PWT-REDEEM-001', 'points_cost' => 5000]);
+        Product::create(['name' => 'Laravel Welcome Gift', 'sku' => 'PWT-GIFT-001', 'points_cost' => 0]);
+        Product::create(['name' => 'Standard Scannable Product', 'sku' => 'PWT-SCAN-001', 'points_award' => 400]);
         
         // --- SETTINGS ---
         // Call the SettingsSeeder to properly seed the settings

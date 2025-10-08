@@ -46,7 +46,6 @@ class HistoryEndpointTest extends TestCase
 
         // ASSERT
         $response->assertStatus(200);
-        $response->assertJsonPath('success', true);
         
         // Should only return 'points_granted' and 'redeem' actions, and only for the logged-in user.
         $response->assertJsonCount(2, 'data.history'); 
@@ -72,7 +71,6 @@ class HistoryEndpointTest extends TestCase
 
         // ASSERT
         $response->assertStatus(200);
-        $response->assertJsonPath('success', true);
         $response->assertJsonCount(0, 'data.history');
     }
 }

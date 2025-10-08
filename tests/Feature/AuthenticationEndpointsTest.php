@@ -32,9 +32,9 @@ class AuthenticationEndpointsTest extends TestCase
 
         // ASSERT
         $response->assertStatus(201);
-        $response->assertJson([
-            'success' => true,
-            'message' => 'Registration successful.'
+        $response->assertJsonStructure([
+            'token',
+            'user_email'
         ]);
 
         // Check that user was created in the database
@@ -83,12 +83,13 @@ class AuthenticationEndpointsTest extends TestCase
 
         // ASSERT
         $response->assertStatus(200);
-        $response->assertJson([
-            'success' => true
+        $response->assertJsonStructure([
+            'token',
+            'user_email'
         ]);
         
         // Check that the response contains a token
-        $responseData = $response->json('data');
+        $responseData = $response->json();
         $this->assertArrayHasKey('token', $responseData);
         $this->assertArrayHasKey('user_email', $responseData);
         
@@ -130,7 +131,6 @@ class AuthenticationEndpointsTest extends TestCase
         // ASSERT
         $response->assertStatus(200);
         $response->assertJson([
-            'success' => true,
             'message' => 'Successfully logged out'
         ]);
 
@@ -158,7 +158,6 @@ class AuthenticationEndpointsTest extends TestCase
         // ASSERT step 1
         $response1->assertStatus(200);
         $response1->assertJson([
-            'success' => true,
             'message' => 'If an account with that email exists, a password reset link has been sent.'
         ]);
 
@@ -182,7 +181,6 @@ class AuthenticationEndpointsTest extends TestCase
         // The password reset should succeed
         $response2->assertStatus(200);
         $response2->assertJson([
-            'success' => true,
             'message' => 'Your password has been reset successfully. You can now log in with your new password.'
         ]);
 
@@ -221,14 +219,11 @@ class AuthenticationEndpointsTest extends TestCase
 
         // ASSERT
         $response->assertStatus(200);
-        $response->assertJson([
-            'success' => true
-        ]);
         
-        $data = $response->json('data');
-        $this->assertEquals('John', $data['firstName']);
-        $this->assertEquals('Doe', $data['lastName']);
-        $this->assertEquals('TEST123', $data['referralCode']['value']);
+        $data = $response->json();
+        $this->assertEquals('John', $data['first_name']);
+        $this->assertEquals('Doe', $data['last_name']);
+        $this->assertEquals('TEST123', $data['referral_code']);
     }
 
     public function test_user_profile_can_be_updated(): void
@@ -264,9 +259,6 @@ class AuthenticationEndpointsTest extends TestCase
 
         // ASSERT
         $response->assertStatus(200);
-        $response->assertJson([
-            'success' => true
-        ]);
 
         // Refresh the user from the database
         $user->refresh();
@@ -300,14 +292,11 @@ class AuthenticationEndpointsTest extends TestCase
 
         // ASSERT
         $response->assertStatus(200);
-        $response->assertJson([
-            'success' => true
-        ]);
         
-        $data = $response->json('data');
+        $data = $response->json();
         $this->assertEquals($user->id, $data['id']);
-        $this->assertEquals('Session', $data['firstName']);
-        $this->assertEquals('User', $data['lastName']);
+        $this->assertEquals('Session', $data['first_name']);
+        $this->assertEquals('User', $data['last_name']);
         $this->assertEquals('session@example.com', $data['email']);
         $this->assertArrayHasKey('points_balance', $data);
         $this->assertArrayHasKey('rank', $data);

@@ -28,7 +28,7 @@ class ContextBuilderService {
     /**
      * Builds the complete, enriched context for a given event.
      */
-    public function build_event_context( int $user_id, ?object $product_post = null ): array {
+    public function build_event_context( \App\Domain\ValueObjects\UserId $user_id, ?object $product_post = null ): array {
         return [
             'user_snapshot'    => $this->build_user_snapshot( $user_id ),
             'product_snapshot' => $product_post ? $this->build_product_snapshot( $product_post ) : null,
@@ -39,8 +39,8 @@ class ContextBuilderService {
     /**
      * Assembles the complete user_snapshot object according to the Data Taxonomy.
      */
-    private function build_user_snapshot( int $user_id ): array {
-        $user = $this->userRepository->getUserCoreData(UserId::fromInt($user_id));
+    private function build_user_snapshot( \App\Domain\ValueObjects\UserId $user_id ): array {
+        $user = $this->userRepository->getUserCoreData($user_id);
         if ( ! $user ) {
             return [];
         }
@@ -50,19 +50,18 @@ class ContextBuilderService {
         $total_scans = $this->actionLogRepo->countUserActions($user_id, 'scan');
         // --- END FIX ---
         
-        $userIdVO = UserId::fromInt($user_id);
-        $rank_dto = $this->rankService->getUserRank($userIdVO);
+        $rank_dto = $this->rankService->getUserRank($user_id);
 
         return [
             'identity' => [
-                'user_id'    => $user_id,
+                'user_id'    => $user_id->toInt(),
                 'email'      => $user->email,
                 'first_name' => $user->meta['first_name'] ?? '',
                 'created_at' => $user->created_at . 'Z',
             ],
             'economy'  => [
-                'points_balance' => $this->userRepository->getPointsBalance($userIdVO),
-                'lifetime_points' => $this->userRepository->getLifetimePoints($userIdVO),
+                'points_balance' => $this->userRepository->getPointsBalance($user_id),
+                'lifetime_points' => $this->userRepository->getLifetimePoints($user_id),
             ],
             'status' => [
                 'rank_key' => (string) $rank_dto->key,

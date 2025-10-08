@@ -5,6 +5,8 @@ namespace Tests\Unit;
 use Tests\TestCase;
 use App\Models\User;
 use App\Services\AchievementRewardService;
+use App\Domain\ValueObjects\UserId;
+use App\Domain\ValueObjects\Points;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
@@ -28,11 +30,12 @@ class AchievementRewardServiceTest extends TestCase
         Queue::fake();
         
         $user = User::factory()->create(['meta' => ['_canna_points_balance' => 500]]);
-        $pointsReward = 100;
+        $userId = UserId::fromInt($user->id);
+        $pointsReward = Points::fromInt(100);
         $reason = 'Test reward';
 
         // Use the real services
-        $this->achievementRewardService->grantReward($user->id, $pointsReward, $reason);
+        $this->achievementRewardService->grantReward($userId, $pointsReward, $reason);
         
         // Verify the user's points balance was updated
         $user->refresh();
@@ -46,9 +49,11 @@ class AchievementRewardServiceTest extends TestCase
         
         $user = User::factory()->create(['meta' => ['_canna_points_balance' => 500]]);
         $initialPoints = $user->meta['_canna_points_balance'];
+        $userId = UserId::fromInt($user->id);
+        $pointsReward = Points::fromInt(0);
 
         // Use the real services
-        $this->achievementRewardService->grantReward($user->id, 0, 'Test zero reward');
+        $this->achievementRewardService->grantReward($userId, $pointsReward, 'Test zero reward');
         
         // Check that the points were not changed
         $user->refresh();
@@ -62,12 +67,15 @@ class AchievementRewardServiceTest extends TestCase
         
         $user = User::factory()->create(['meta' => ['_canna_points_balance' => 500]]);
         $initialPoints = $user->meta['_canna_points_balance'];
+        $userId = UserId::fromInt($user->id);
+        
+        // This should throw an exception because Points value object validates against negative values
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Points cannot be negative. Received: -50');
+        
+        $pointsReward = Points::fromInt(-50);
 
         // Use the real services
-        $this->achievementRewardService->grantReward($user->id, -50, 'Test negative reward');
-        
-        // Check that the points were not changed
-        $user->refresh();
-        $this->assertEquals($initialPoints, $user->meta['_canna_points_balance']);
+        $this->achievementRewardService->grantReward($userId, $pointsReward, 'Test negative reward');
     }
 }

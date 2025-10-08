@@ -1,6 +1,7 @@
 <?php
 namespace App\Repositories;
 
+use App\Domain\ValueObjects\UserId;
 use Illuminate\Support\Facades\DB;
 
 // Exit if accessed directly.
@@ -27,18 +28,18 @@ class AchievementRepository {
         return $results;
     }
 
-    public function getUnlockedKeysForUser(int $user_id): array {
+    public function getUnlockedKeysForUser(UserId $user_id): array {
         $keys = DB::table('user_achievements')
-            ->where('user_id', $user_id)
+            ->where('user_id', $user_id->toInt())
             ->pluck('achievement_key')
             ->toArray();
         
         return $keys;
     }
 
-    public function saveUnlockedAchievement(int $user_id, string $achievement_key): void {
+    public function saveUnlockedAchievement(UserId $user_id, string $achievement_key): void {
         DB::table('user_achievements')->insert([
-            'user_id'         => $user_id,
+            'user_id'         => $user_id->toInt(),
             'achievement_key' => $achievement_key,
             'unlocked_at'     => now()
         ]);

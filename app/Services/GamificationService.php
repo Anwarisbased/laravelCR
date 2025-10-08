@@ -32,10 +32,10 @@ class GamificationService {
         if (empty($user_id)) {
             return;
         }
-        $this->check_and_process_event($user_id, $event_name, $payload);
+        $this->check_and_process_event(\App\Domain\ValueObjects\UserId::fromInt($user_id), $event_name, $payload);
     }
 
-    private function check_and_process_event(int $user_id, string $event_name, array $context = []) {
+    private function check_and_process_event(\App\Domain\ValueObjects\UserId $user_id, string $event_name, array $context = []) {
         $achievements_to_check = $this->achievement_repository->findByTriggerEvent($event_name);
         $user_unlocked_keys = $this->achievement_repository->getUnlockedKeysForUser($user_id);
 
@@ -50,7 +50,7 @@ class GamificationService {
         }
     }
     
-    private function evaluate_conditions(object $achievement, int $user_id, array $context): bool {
+    private function evaluate_conditions(object $achievement, \App\Domain\ValueObjects\UserId $user_id, array $context): bool {
         $action_count = $this->action_log_repository->countUserActions($user_id, $achievement->trigger_event);
         if ($action_count < (int) $achievement->trigger_count) {
             return false;
@@ -65,13 +65,13 @@ class GamificationService {
         return $this->rules_engine->evaluate($json_conditions, $context);
     }
 
-    private function unlock_achievement(int $user_id, object $achievement) {
+    private function unlock_achievement(\App\Domain\ValueObjects\UserId $user_id, object $achievement) {
         $this->achievement_repository->saveUnlockedAchievement($user_id, $achievement->achievement_key);
         
         $points_reward = (int) $achievement->points_reward;
         if ($points_reward > 0) {
             $command = new GrantPointsCommand(
-                \App\Domain\ValueObjects\UserId::fromInt($user_id),
+                $user_id,
                 \App\Domain\ValueObjects\Points::fromInt($points_reward),
                 'Achievement Unlocked: ' . $achievement->title
             );

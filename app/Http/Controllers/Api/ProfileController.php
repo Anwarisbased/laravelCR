@@ -8,6 +8,7 @@ use App\Services\UserService;
 use App\Domain\ValueObjects\UserId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Data\ProfileData;
 
 class ProfileController extends Controller
 {
@@ -23,22 +24,9 @@ class ProfileController extends Controller
      */
     public function getProfile(Request $request): JsonResponse
     {
-        $profileDto = $this->userService->get_full_profile_data(UserId::fromInt($request->user()->id));
+        $profileData = $this->userService->get_full_profile_data(UserId::fromInt($request->user()->id));
         
-        // DTOs with Value Objects need custom serialization logic to be clean JSON.
-        // A dedicated API Resource class is the Laravel-native way to handle this.
-        // For now, we manually build the response array to match the contract.
-        $data = [
-            'firstName' => $profileDto->firstName,
-            'lastName' => $profileDto->lastName,
-            'phoneNumber' => $profileDto->phoneNumber ? ['value' => (string)$profileDto->phoneNumber] : null,
-            'referralCode' => $profileDto->referralCode ? ['value' => (string)$profileDto->referralCode] : null,
-            'shippingAddress' => (array) $profileDto->shippingAddress,
-            'unlockedAchievementKeys' => $profileDto->unlockedAchievementKeys,
-            'customFields' => $profileDto->customFields,
-        ];
-
-        return response()->json(['success' => true, 'data' => $data]);
+        return response()->json($profileData, 200);
     }
     
     /**
@@ -47,7 +35,7 @@ class ProfileController extends Controller
     public function updateProfile(UpdateProfileRequest $request): JsonResponse
     {
         $command = $request->toCommand();
-        $this->userService->handle($command);
+        $result = $this->userService->handle($command);
         
         // Return the fresh profile data after the update
         return $this->getProfile($request);

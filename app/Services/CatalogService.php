@@ -145,40 +145,7 @@ class CatalogService
         // or use cache tags for easier management
     }
 
-    /**
-     * A helper function to consistently format product data for the API response.
-     * This ensures the frontend receives data in the exact structure it expects.
-     *
-     * @param object $product The product object.
-     * @return array The formatted product data.
-     */
-    public function format_product_for_api($product): array
-    {
-        // In a pure Laravel implementation, we'd have proper image handling
-        $image_url = Storage::url('products/' . $product->id . '.jpg');
-        if (!Storage::exists('products/' . $product->id . '.jpg')) {
-            $image_url = '/images/placeholder.png'; // Using Laravel placeholder
-        }
 
-        return [
-            'id'          => $product->id,
-            'name'        => $product->name,
-            'description' => $product->description ?? '',
-            'images'      => [
-                ['src' => $image_url]
-            ],
-            'meta_data'   => [
-                [
-                    'key'   => 'points_cost',
-                    'value' => $product->points_cost ?? 0,
-                ],
-                [
-                    'key'   => '_required_rank',
-                    'value' => $product->required_rank ?? '',
-                ],
-            ],
-        ];
-    }
 
     public function is_user_eligible_for_free_claim(int $product_id, int $user_id): bool
     {

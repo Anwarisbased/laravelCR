@@ -45,4 +45,8 @@ class ProductRepository {
         $rank = $product->required_rank ?? '';
         return empty($rank) ? null : $rank;
     }
+    
+    public function find(ProductId $id): ?\App\Models\Product {
+        return \App\Models\Product::find($id->toInt());
+    }
 }

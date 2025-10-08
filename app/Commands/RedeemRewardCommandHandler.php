@@ -52,7 +52,7 @@ final class RedeemRewardCommandHandler {
         $current_balance = $this->userRepo->getPointsBalance($command->userId);
         $new_balance = $current_balance - $points_cost;
 
-        $order_id = $this->orderRepo->createFromRedemption($user_id, $product_id, $command->shippingDetails);
+        $order_id = $this->orderRepo->createFromRedemption($command->userId, $command->productId, $command->shippingDetails);
         if (!$order_id) { 
             \Illuminate\Support\Facades\Log::error('RedeemRewardCommandHandler: Failed to create order for redemption');
             throw new Exception('Failed to create order for redemption.'); 
@@ -69,11 +69,11 @@ final class RedeemRewardCommandHandler {
         $product_name = $product ? $product->name : 'Reward';
         
         $log_meta_data = ['description' => 'Redeemed: ' . $product_name, 'points_change' => -$points_cost, 'new_balance' => $new_balance, 'order_id' => $order_id];
-        $this->logService->record($user_id, 'redeem', $product_id, $log_meta_data);
+        $this->logService->record($command->userId, 'redeem', $product_id, $log_meta_data);
         
         // Build context without WordPress dependencies
         $product_post = $product ? (object)['ID' => $product->id] : null;
-        $full_context = $this->contextBuilder->build_event_context($user_id, $product_post);
+        $full_context = $this->contextBuilder->build_event_context($command->userId, $product_post);
         
         // Dispatch Laravel event instead of using custom event bus
         Event::dispatch(new RewardRedeemed($full_context));

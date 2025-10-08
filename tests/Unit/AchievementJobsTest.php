@@ -68,8 +68,8 @@ class AchievementJobsTest extends TestCase
     public function test_grant_achievement_reward_job_calls_service_method()
     {
         $user = User::factory()->create(['meta' => ['_canna_points_balance' => 500]]);
-        $userId = $user->id;
-        $pointsReward = 100;
+        $userId = $user->id; // Keep as integer to match the job's constructor
+        $pointsReward = 100; // Keep as integer to match the job's constructor
         $reason = 'Test job reward';
 
         // Execute the job with real service

@@ -1,0 +1,636 @@
+openapi: 3.0.3
+info:
+  title: CannaRewards Synergy Engine API
+  description: API for the CannaRewards Synergy Engine platform with Customer.io integration and AI-powered personalization
+  version: 1.0.0
+  contact:
+    name: CannaRewards Support
+    email: support@cannarewards.com
+
+servers:
+  - url: https://api.cannarewards.com/v1
+    description: Production server
+  - url: https://staging-api.cannarewards.com/v1
+    description: Staging server
+
+paths:
+  /auth/login:
+    post:
+      summary: User login
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+              required:
+                - email
+                - password
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      token:
+                        type: string
+                      ai_profile:
+                        $ref: '#/components/schemas/AIProfile'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/register:
+    post:
+      summary: User registration
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                qr_code:
+                  type: string
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                address:
+                  type: string
+                address2:
+                  type: string
+                  nullable: true
+                city:
+                  type: string
+                state:
+                  type: string
+                zip:
+                  type: string
+                age_verification:
+                  type: boolean
+              required:
+                - qr_code
+                - first_name
+                - last_name
+                - email
+                - password
+                - address
+                - city
+                - state
+                - zip
+                - age_verification
+      responses:
+        '200':
+          description: Successful registration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      referral_code:
+                        type: string
+                      message:
+                        type: string
+
+  /users/me:
+    get:
+      summary: Get current user profile
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/User'
+
+  /users/me/dashboard:
+    get:
+      summary: Get user dashboard data
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      achievements:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Achievement'
+                      ai_profile:
+                        $ref: '#/components/schemas/AIProfile'
+                      next_best_actions:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/NextBestAction'
+                      pwa_cards:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/PWACard'
+
+  /scans:
+    post:
+      summary: Process product scan
+      tags:
+        - Scans
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                qr_code:
+                  type: string
+              required:
+                - qr_code
+      responses:
+        '200':
+          description: Scan processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      points_earned:
+                        type: integer
+                      new_balance:
+                        type: integer
+                      achievement_unlocked:
+                        $ref: '#/components/schemas/Achievement'
+                      product:
+                        $ref: '#/components/schemas/Product'
+
+  /referrals/me:
+    get:
+      summary: Get user's referral information
+      tags:
+        - Referrals
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Referral information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Referral'
+
+  /wishlist:
+    get:
+      summary: Get user's wishlist
+      tags:
+        - Wishlist
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User's wishlist
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WishlistItem'
+    post:
+      summary: Add item to wishlist
+      tags:
+        - Wishlist
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                product_id:
+                  type: integer
+              required:
+                - product_id
+      responses:
+        '200':
+          description: Item added to wishlist
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/WishlistItem'
+
+  /pwa-cards:
+    get:
+      summary: Get personalized PWA cards based on AI insights
+      tags:
+        - PWA
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Personalized PWA cards
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PWACard'
+
+  /next-best-actions:
+    get:
+      summary: Get next best actions based on AI insights
+      tags:
+        - Personalization
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Next best actions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NextBestAction'
+
+  /events/track:
+    post:
+      summary: Track user event for Customer.io
+      tags:
+        - Events
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Event name
+                data:
+                  type: object
+                  description: Event data payload
+              required:
+                - name
+                - data
+      responses:
+        '200':
+          description: Event tracked successfully
+
+  /webhooks/customer-io:
+    post:
+      summary: Receive Customer.io webhook
+      tags:
+        - Webhooks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: integer
+                predictions:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Webhook processed successfully
+
+  /theme/config:
+    get:
+      summary: Get brand theme configuration
+      tags:
+        - Theme
+      responses:
+        '200':
+          description: Theme configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThemeConfig'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+        phone_number:
+          type: string
+        points_balance:
+          type: integer
+        lifetime_points:
+          type: integer
+        current_rank_key:
+          type: string
+        referral_code:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        brand_id:
+          type: integer
+        sku:
+          type: string
+        name:
+          type: string
+        msrp:
+          type: number
+          format: decimal
+        points_award:
+          type: integer
+        product_line:
+          type: string
+        product_form:
+          type: string
+        strain_name:
+          type: string
+        strain_type:
+          type: string
+        potency_thc_percent:
+          type: number
+          format: decimal
+        potency_cbd_percent:
+          type: number
+          format: decimal
+        dominant_terpene:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    Achievement:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        completed:
+          type: boolean
+        progress:
+          type: integer
+        target:
+          type: integer
+        points_reward:
+          type: integer
+        rarity:
+          type: string
+          enum: [common, uncommon, rare, epic, legendary]
+        badge:
+          type: string
+
+    AIProfile:
+      type: object
+      properties:
+        churn_probability:
+          type: number
+          format: decimal
+        predicted_lifetime_value:
+          type: number
+          format: decimal
+        engagement_score:
+          type: number
+          format: decimal
+        product_affinity_scores:
+          type: object
+          additionalProperties:
+            type: number
+        purchase_probability:
+          type: number
+          format: decimal
+        recommended_segment:
+          type: string
+        next_best_action:
+          type: string
+        calculated_at:
+          type: string
+          format: date-time
+
+    Referral:
+      type: object
+      properties:
+        referral_code:
+          type: string
+        total_referrals_completed:
+          type: integer
+        points_awarded:
+          type: integer
+
+    WishlistItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        product:
+          $ref: '#/components/schemas/Product'
+        points_needed:
+          type: integer
+        referrals_needed:
+          type: integer
+        added_at:
+          type: string
+          format: date-time
+
+    PWACard:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [achievement, referral, wishlist, recommendation]
+        title:
+          type: string
+        description:
+          type: string
+        action:
+          type: object
+          properties:
+            text:
+              type: string
+            url:
+              type: string
+            type:
+              type: string
+              enum: [primary, secondary]
+        priority:
+          type: integer
+        relevance:
+          type: object
+          additionalProperties: true
+
+    NextBestAction:
+      type: object
+      properties:
+        action_type:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        predicted_value:
+          type: number
+          format: decimal
+        priority:
+          type: integer
+
+    ThemeConfig:
+      type: object
+      properties:
+        primary:
+          type: object
+          additionalProperties:
+            type: string
+        secondary:
+          type: object
+          additionalProperties:
+            type: string
+        background:
+          type: string
+        card:
+          type: string
+        borderRadius:
+          type: object
+          additionalProperties:
+            type: string
+        typography:
+          type: object
+          properties:
+            fontFamily:
+              type: string
+            fontSize:
+              type: object
+              additionalProperties:
+                type: string
+            fontWeight:
+              type: object
+              additionalProperties:
+                type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties: true

@@ -20,9 +20,9 @@ class PageController extends Controller
         $pageData = $this->contentService->get_page_by_slug($slug);
 
         if (!$pageData) {
-            return response()->json(['success' => false, 'message' => 'Page not found.'], 404);
+            return response()->json(['message' => 'Page not found.'], 404);
         }
 
-        return response()->json(['success' => true, 'data' => $pageData]);
+        return response()->json($pageData);
     }
 }

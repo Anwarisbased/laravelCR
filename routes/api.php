@@ -17,6 +17,17 @@ use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\RankController;
 use App\Http\Controllers\Api\DashboardController;
 
+// New Order Management Routes (using v1 as specified in the vertical slice)
+Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
+    // Redemption endpoints
+    Route::post('/actions/redeem', [App\Http\Controllers\Api\RedemptionController::class, 'redeem']);
+    
+    // Order endpoints
+    Route::get('/users/me/orders', [App\Http\Controllers\Api\OrderController::class, 'index']);
+    Route::get('/orders/{id}', [App\Http\Controllers\Api\OrderController::class, 'show']);
+    Route::get('/orders/{id}/tracking', [App\Http\Controllers\Api\OrderController::class, 'tracking']);
+});
+
 // --- PUBLIC ROUTES ---
 Route::prefix('rewards/v2')->group(function () {
     Route::post('/unauthenticated/claim', [ClaimController::class, 'processUnauthenticatedClaim']);
@@ -61,11 +72,11 @@ Route::middleware('auth:sanctum')->prefix('rewards/v2')->group(function () {
     
     // Actions
     Route::post('/actions/claim', [ClaimController::class, 'processClaim']);
-    Route::post('/actions/redeem', [RedeemController::class, 'processRedemption']);
+    Route::post('/actions/redeem', [RedeemController::class, 'processRedemption']); // Old endpoint - may need to be replaced later
 
     // Data
-    Route::get('/users/me/orders', [OrdersController::class, 'getOrders']);
-    Route::get('/users/me/referrals', [ReferralController::class, 'getMyReferrals'])->withoutMiddleware('auth:sanctum'); // NEW - TEMPORARY FOR DEBUGGING
+    Route::get('/users/me/orders', [OrdersController::class, 'getOrders']); // Old endpoint - may need to be replaced later
+    Route::get('/users/me/referrals', [ReferralController::class, 'getMyReferrals']); // NEW
     Route::post('/users/me/referrals/nudge', [ReferralController::class, 'getNudgeOptions']); // NEW
     Route::post('/users/me/referrals/process', [ReferralController::class, 'processReferral']); // NEW
     

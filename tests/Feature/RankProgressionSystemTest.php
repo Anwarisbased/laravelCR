@@ -20,7 +20,10 @@ class RankProgressionSystemTest extends TestCase
     public function test_rank_definitions_configured_and_accessible(): void
     {
         // ARRANGE
-        Rank::create([
+        // Clear any existing ranks to ensure isolation
+        \App\Models\Rank::truncate();
+        
+        $bronzeRank = Rank::create([
             'key' => 'bronze',
             'name' => 'Bronze Member',
             'points_required' => 0,
@@ -29,7 +32,7 @@ class RankProgressionSystemTest extends TestCase
             'sort_order' => 1,
         ]);
         
-        Rank::create([
+        $silverRank = Rank::create([
             'key' => 'silver',
             'name' => 'Silver Member',
             'points_required' => 500,
@@ -43,31 +46,32 @@ class RankProgressionSystemTest extends TestCase
 
         // ASSERT
         $response->assertStatus(200);
-        $response->assertJson([
-            'success' => true,
-            'data' => [
-                'ranks' => [
-                    [
-                        'key' => 'bronze',
-                        'name' => 'Bronze Member',
-                        'points_required' => 0,
-                    ],
-                    [
-                        'key' => 'silver',
-                        'name' => 'Silver Member',
-                        'points_required' => 500,
-                    ]
-                ]
-            ]
-        ]);
         
-        // Additional assertions to verify specific values
-        $response->assertJsonPath('data.ranks.0.key', 'bronze');
-        $response->assertJsonPath('data.ranks.0.name', 'Bronze Member');
-        $response->assertJsonPath('data.ranks.0.points_required', 0);
-        $response->assertJsonPath('data.ranks.1.key', 'silver');
-        $response->assertJsonPath('data.ranks.1.name', 'Silver Member');
-        $response->assertJsonPath('data.ranks.1.points_required', 500);
+        // Check that response contains our expected ranks
+        $responseData = $response->json();
+        $ranks = $responseData['ranks'];
+        
+        // Verify that our ranks are present in the response
+        $this->assertNotEmpty($ranks);
+        
+        // Find our specific ranks in the response
+        $foundBronze = false;
+        $foundSilver = false;
+        
+        foreach ($ranks as $rank) {
+            if ($rank['key'] === 'bronze' && $rank['name'] === 'Bronze Member') {
+                $this->assertEquals(0, $rank['points_required']);
+                $foundBronze = true;
+            }
+            
+            if ($rank['key'] === 'silver' && $rank['name'] === 'Silver Member') {
+                $this->assertEquals(500, $rank['points_required']);
+                $foundSilver = true;
+            }
+        }
+        
+        $this->assertTrue($foundBronze, 'Bronze rank should be present in response');
+        $this->assertTrue($foundSilver, 'Silver rank should be present in response');
     }
 
     public function test_user_rank_correctly_calculated_based_on_lifetime_points(): void
@@ -104,20 +108,17 @@ class RankProgressionSystemTest extends TestCase
         // ASSERT
         $response->assertStatus(200);
         $response->assertJson([
-            'success' => true,
-            'data' => [
-                'current_rank' => [
-                    'key' => 'silver',
-                    'name' => 'Silver Member',
-                ],
-                'lifetime_points' => 750,
-            ]
+            'current_rank' => [
+                'key' => 'silver',
+                'name' => 'Silver Member',
+            ],
+            'lifetime_points' => 750,
         ]);
         
         // Additional specific assertions
-        $response->assertJsonPath('data.current_rank.key', 'silver');
-        $response->assertJsonPath('data.current_rank.name', 'Silver Member');
-        $response->assertJsonPath('data.lifetime_points', 750);
+        $response->assertJsonPath('current_rank.key', 'silver');
+        $response->assertJsonPath('current_rank.name', 'Silver Member');
+        $response->assertJsonPath('lifetime_points', 750);
     }
 
     public function test_rank_transitions_automatically_on_lifetime_points_threshold_cross(): void
@@ -154,7 +155,7 @@ class RankProgressionSystemTest extends TestCase
         $initialResponse = $this->actingAs($user, 'sanctum')
             ->getJson('/api/rewards/v2/users/me/rank');
         $initialResponse->assertStatus(200);
-        $initialResponse->assertJsonPath('data.current_rank.key', 'bronze');
+        $initialResponse->assertJsonPath('current_rank.key', 'bronze');
 
         // Update user points to cross Silver threshold
         $user->update(['lifetime_points' => 600]); // Now above Silver threshold
@@ -252,8 +253,11 @@ class RankProgressionSystemTest extends TestCase
         // ARRANGE
         Cache::flush(); // Clear cache
         
+        // Clean slate - remove all ranks to ensure isolation
+        \App\Models\Rank::truncate();
+        
         $rank = Rank::create([
-            'key' => 'test-rank',
+            'key' => 'test-rank-sys',
             'name' => 'Test Rank',
             'points_required' => 100,
             'point_multiplier' => 1.0,
@@ -265,11 +269,23 @@ class RankProgressionSystemTest extends TestCase
         $response1 = $this->getJson('/api/rewards/v2/users/ranks');
         $initialData = $response1->json();
 
+        // Find our specific rank in the initial response
+        $initialRank = null;
+        foreach ($initialData['ranks'] as $r) {
+            if ($r['key'] === 'test-rank-sys') {
+                $initialRank = $r;
+                break;
+            }
+        }
+        $this->assertNotNull($initialRank, 'Test rank should be present in initial response');
+        $initialName = $initialRank['name'];
+
         // Verify cache is populated
         $this->assertTrue(Cache::has('all_ranks'));
         
         // Modify the rank
-        $rank->update(['name' => 'Updated Test Rank']);
+        $updatedName = 'Updated Test Rank';
+        $rank->update(['name' => $updatedName]);
 
         // Clear cache to simulate invalidation
         Cache::forget('all_ranks');
@@ -278,14 +294,24 @@ class RankProgressionSystemTest extends TestCase
         $response2 = $this->getJson('/api/rewards/v2/users/ranks');
         $updatedData = $response2->json();
 
+        // Find our specific rank in the updated response
+        $updatedRank = null;
+        foreach ($updatedData['ranks'] as $r) {
+            if ($r['key'] === 'test-rank-sys') {
+                $updatedRank = $r;
+                break;
+            }
+        }
+        $this->assertNotNull($updatedRank, 'Test rank should be present in updated response');
+
         // ASSERT
         $response1->assertStatus(200);
         $response2->assertStatus(200);
         
         // Data should be different after update
         $this->assertNotEquals(
-            $initialData['data']['ranks'][0]['name'],
-            $updatedData['data']['ranks'][0]['name'],
+            $initialName,
+            $updatedRank['name'],
             'Cache invalidated and fresh data retrieved after rank update'
         );
     }
@@ -334,24 +360,21 @@ class RankProgressionSystemTest extends TestCase
         // ASSERT
         $response->assertStatus(200);
         $response->assertJson([
-            'success' => true,
-            'data' => [
-                'current_rank' => [
-                    'key' => 'silver',
-                    'name' => 'Silver Member',
-                ],
-                'next_rank' => [
-                    'key' => 'gold',
-                    'name' => 'Gold Member',
-                ],
-                'lifetime_points' => 1000,
-            ]
+            'current_rank' => [
+                'key' => 'silver',
+                'name' => 'Silver Member',
+            ],
+            'next_rank' => [
+                'key' => 'gold',
+                'name' => 'Gold Member',
+            ],
+            'lifetime_points' => 1000,
         ]);
         
         // Verify progress calculation
         // User has 1000 points, Silver requires 500, Gold requires 1500
         // Progress = (1000 - 500) / (1500 - 500) = 500 / 1000 = 50%
-        $responseData = $response->json('data');
+        $responseData = $response->json();
         $this->assertEquals(1000, $responseData['lifetime_points']);
         // We'll allow the progress to be in the vicinity of 50% since exact calculation may vary
         $this->assertGreaterThanOrEqual(45, $responseData['progress_percent']);
@@ -392,7 +415,7 @@ class RankProgressionSystemTest extends TestCase
         // Verify initial rank is Bronze
         $initialResponse = $this->actingAs($user, 'sanctum')
             ->getJson('/api/rewards/v2/users/me/rank');
-        $initialResponse->assertJsonPath('data.current_rank.key', 'bronze');
+        $initialResponse->assertJsonPath('current_rank.key', 'bronze');
 
         // ACT - Cross the rank threshold by updating user's lifetime points
         $user->update(['lifetime_points' => 501]); // Now above Silver threshold

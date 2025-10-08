@@ -1,0 +1,367 @@
+openapi: 3.0.3
+info:
+  title: CannaRewards API
+  version: 2.1.0
+
+paths:
+  /users/me/session:
+    get:
+      tags:
+        - App & Session
+      summary: Get Session Data
+      description: A lightweight 'heartbeat' endpoint. Verifies the user's token and returns the minimal data needed to render the authenticated app shell.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/SessionUser'
+        '401':
+          description: Unauthorized
+  /users/me/orders:
+    get:
+      tags:
+        - User Profile & Data
+      summary: Get User's Redeemed Orders
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      orders:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Order'
+        '401':
+          description: Unauthorized
+  /actions/redeem:
+    post:
+      tags:
+        - Actions
+      summary: Redeem a Reward
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productId
+              properties:
+                productId:
+                  type: integer
+                  example: 82
+                shippingDetails:
+                  $ref: '#/components/schemas/ShippingAddress'
+      responses:
+        '200':
+          description: Redemption successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      order_id:
+                        type: integer
+                        example: 12345
+                      new_points_balance:
+                        type: integer
+                        example: 800
+        '401':
+          description: Unauthorized
+        '402':
+          description: Insufficient points.
+        '403':
+          description: Forbidden
+  /unauthenticated/claim:
+    post:
+      tags:
+        - Actions
+      summary: Process an Unauthenticated Product Scan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+      responses:
+        '200':
+          description: Code is valid, registration is required.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: 'registration_required'
+                      registration_token:
+                        type: string
+                      reward_preview:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          name:
+                            type: string
+                          image:
+                            type: string
+                            format: uri
+  /auth/register-with-token:
+    post:
+      tags:
+        - Authentication
+      summary: Register user with a claim token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                agreedToTerms:
+                  type: boolean
+                registration_token:
+                  type: string
+      responses:
+        '200':
+          description: Registration successful, JWT returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                      user_email:
+                        type: string
+                        format: email
+                      user_display_name:
+                        type: string
+                      user_nicename:
+                        type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+
+components:
+  schemas:
+    SessionUser:
+      type: object
+      description: A lightweight object representing the core data for an authenticated user's session.
+      properties:
+        id:
+          type: integer
+          example: 123
+        firstName:
+          type: string
+          example: Jane
+          nullable: true
+        lastName:
+          type: string
+          example: Doe
+          nullable: true
+        email:
+          type: string
+          format: email
+          example: jane.doe@example.com
+        points_balance:
+          type: integer
+          example: 1250
+        rank:
+          type: object
+          description: The user's current rank.
+          properties:
+            key:
+              type: string
+              example: silver
+            name:
+              type: string
+              example: Silver
+        shipping:
+          type: object
+          properties:
+            first_name:
+              type: string
+            last_name:
+              type: string
+            address_1:
+              type: string
+            city:
+              type: string
+            state:
+              type: string
+            postcode:
+              type: string
+        referral_code:
+          type: string
+          example: JANE1A2B
+          nullable: true
+        onboarding_quest_step:
+          type: integer
+          description: Tracks the user's progress in the onboarding flow.
+          example: 2
+        feature_flags:
+          type: object
+          description: Flags for A/B testing frontend features.
+          example:
+            dashboard_version: B
+    Rank:
+      type: object
+      description: Represents a single rank or tier in the loyalty program.
+      properties:
+        key:
+          type: string
+          description: The unique, machine-readable key for the rank.
+          example: gold
+        name:
+          type: string
+          description: The human-readable name of the rank.
+          example: Gold
+        points:
+          type: integer
+          description: The lifetime points required to achieve this rank.
+          example: 5000
+        point_multiplier:
+          type: number
+          format: float
+          description: The point earning multiplier for this rank.
+          example: 1.5
+    ShippingAddress:
+      type: object
+      description: A standard shipping address object.
+      required:
+        - first_name
+        - last_name
+        - address_1
+        - city
+        - state
+        - postcode
+      properties:
+        first_name:
+          type: string
+          example: Jane
+        last_name:
+          type: string
+          example: Doe
+        address_1:
+          type: string
+          example: 123 Main St
+        city:
+          type: string
+          example: Anytown
+        state:
+          type: string
+          example: CA
+        postcode:
+          type: string
+          example: 90210
+    Order:
+      type: object
+      description: Represents a single redeemed order.
+      properties:
+        orderId:
+          type: integer
+        date:
+          type: string
+          format: date
+        status:
+          type: string
+        items:
+          type: string
+        imageUrl:
+          type: string
+          format: uri
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

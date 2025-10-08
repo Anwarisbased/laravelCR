@@ -21,11 +21,11 @@ class ReferralService {
     public function __construct(
         CDPService $cdp_service,
         UserRepository $user_repository,
-        ?ReferralCodeService $referral_code_service = null // Allow null for backward compatibility
+        ReferralCodeService $referral_code_service
     ) {
         $this->cdp_service = $cdp_service;
         $this->user_repository = $user_repository;
-        $this->referral_code_service = $referral_code_service ?: app(ReferralCodeService::class); // Inject if not provided
+        $this->referral_code_service = $referral_code_service;
     }
 
     /**
@@ -44,43 +44,48 @@ class ReferralService {
             return;
         }
 
+        $userIdVO = \App\Domain\ValueObjects\UserId::fromInt($userId);
+
         // 1. Generate a new referral code for the user who just signed up.
-        $this->generate_code_for_new_user($userId, $userFirstName);
+        $this->generate_code_for_new_user($userIdVO, $userFirstName);
 
         // 2. If they used a referral code, process it.
         $referralCodeUsed = $payload['referral_code'] ?? null;
         if ($referralCodeUsed) {
-            $this->process_new_user_referral($userId, $referralCodeUsed);
+            $this->process_new_user_referral($userIdVO, \App\Domain\ValueObjects\ReferralCode::fromString($referralCodeUsed));
         }
     }
     
     // Original method for processing new user referral
-    public function process_new_user_referral(int $new_user_id, string $referral_code) {
-        if (empty($new_user_id) || empty($referral_code)) {
-            return;
-        }
-
-        $referrer_user_id = $this->user_repository->findUserIdByReferralCode($referral_code);
+    public function process_new_user_referral(\App\Domain\ValueObjects\UserId $new_user_id, \App\Domain\ValueObjects\ReferralCode $referral_code) {
+        $referrer_user_id = $this->user_repository->findUserIdByReferralCode($referral_code->value);
 
         if ($referrer_user_id) {
-            $new_user_id_vo = \App\Domain\ValueObjects\UserId::fromInt($new_user_id);
             $referrer_user_id_vo = \App\Domain\ValueObjects\UserId::fromInt($referrer_user_id);
-            $this->user_repository->setReferredBy($new_user_id_vo, $referrer_user_id_vo);
+            $this->user_repository->setReferredBy($new_user_id, $referrer_user_id_vo);
         }
     }
 
     /**
      * Process a new user sign up with a referral code.
+     * @param string|ReferralCode $referral_code The referral code as string or value object
      */
-    public function processSignUp(User $invitee, string $referral_code): bool
+    public function processSignUp(User $invitee, $referral_code): bool
     {
+        // Convert to value object if it's a raw string
+        if (is_string($referral_code)) {
+            $referralCodeVO = \App\Domain\ValueObjects\ReferralCode::fromString($referral_code);
+        } else {
+            $referralCodeVO = $referral_code;
+        }
+        
         // Validate referral code
-        if (!$this->referral_code_service->isValid($referral_code)) {
+        if (!$this->referral_code_service->isValid($referralCodeVO->value)) {
             return false;
         }
         
         // Find referrer
-        $referrer = $this->referral_code_service->getUserByReferralCode($referral_code);
+        $referrer = $this->referral_code_service->getUserByReferralCode($referralCodeVO->value);
         if (!$referrer) {
             return false;
         }
@@ -100,12 +105,12 @@ class ReferralService {
         $referral = Referral::create([
             'referrer_user_id' => $referrer->id,
             'invitee_user_id' => $invitee->id,
-            'referral_code' => $referral_code,
+            'referral_code' => $referralCodeVO->value,
             'status' => 'signed_up',
         ]);
         
         // Fire event
-        Event::dispatch(new ReferralInviteeSignedUp($referrer, $invitee, $referral_code));
+        Event::dispatch(new ReferralInviteeSignedUp($referrer, $invitee, $referralCodeVO->value));
         
         return true;
     }
@@ -177,7 +182,7 @@ class ReferralService {
     /**
      * Generate a referral code for a new user.
      */
-    public function generate_code_for_new_user(int $user_id, string $first_name = ''): string 
+    public function generate_code_for_new_user(\App\Domain\ValueObjects\UserId $user_id, string $first_name = ''): string 
     {
         $base_code_name = !empty($first_name) ? $first_name : 'USER';
         $base_code      = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $base_code_name), 0, 4));
@@ -199,15 +204,7 @@ class ReferralService {
             } while (!is_null($exists));
         }
         
-        $user_id_vo = new \App\Domain\ValueObjects\UserId($user_id);
-        $this->user_repository->saveReferralCode($user_id_vo, $new_code);
-        
-        // Also update the Eloquent model's referral_code column for consistency
-        $user = \App\Models\User::find($user_id);
-        if ($user) {
-            $user->referral_code = $new_code;
-            $user->save();
-        }
+        $this->user_repository->saveReferralCode($user_id, $new_code);
         
         return $new_code;
     }
@@ -215,9 +212,9 @@ class ReferralService {
     /**
      * Get the status of all users referred by a specific user.
      */
-    public function get_user_referrals(int $user_id): array 
+    public function get_user_referrals(\App\Domain\ValueObjects\UserId $user_id): array 
     {
-        $user = User::find($user_id);
+        $user = User::find($user_id->toInt());
         if (!$user) {
             return [];
         }
@@ -246,9 +243,9 @@ class ReferralService {
     /**
      * Get referral stats for a user.
      */
-    public function get_referral_stats(int $user_id): array
+    public function get_referral_stats(\App\Domain\ValueObjects\UserId $user_id): array
     {
-        $user = User::find($user_id);
+        $user = User::find($user_id->toInt());
         if (!$user) {
             return [
                 'total_referrals' => 0,
@@ -278,21 +275,28 @@ class ReferralService {
     /**
      * Get nudge options for a referee. 
      */
-    public function get_nudge_options_for_referee(int $user_id, string $email): array 
+    public function get_nudge_options_for_referee(\App\Domain\ValueObjects\UserId $user_id, $email): array 
     { 
-        $user = User::find($user_id);
+        $user = User::find($user_id->toInt());
         if (!$user) {
             return ['error' => 'User not found'];
         }
         
+        // Convert to value object if it's a raw string
+        if (is_string($email)) {
+            $emailVO = \App\Domain\ValueObjects\EmailAddress::fromString($email);
+        } else {
+            $emailVO = $email;
+        }
+
         // Validate email
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if (!filter_var($emailVO->value, FILTER_VALIDATE_EMAIL)) {
             return ['error' => 'Invalid email address'];
         }
         
         // Check if already referred
-        $existingReferral = Referral::whereHas('invitee', function ($query) use ($email) {
-            $query->where('email', $email);
+        $existingReferral = Referral::whereHas('invitee', function ($query) use ($emailVO) {
+            $query->where('email', $emailVO->value);
         })->first();
         
         if ($existingReferral) {
@@ -300,14 +304,58 @@ class ReferralService {
         }
         
         // Check if the user is trying to refer themselves
-        if ($user->email === $email) {
+        if ($user->email === $emailVO->value) {
             return ['error' => 'You cannot refer yourself'];
         }
         
         return [
             'can_nudge' => true,
-            'message' => "Invite {$email} to earn bonus points!",
+            'message' => "Invite {$emailVO->value} to earn bonus points!",
             'referral_code' => $user->referral_code,
         ]; 
+    }
+    
+    /**
+     * Get referral data for a user using Data classes.
+     */
+    public function get_user_referral_data(\App\Domain\ValueObjects\UserId $user_id): \App\Data\ReferralCollectionData
+    {
+        $user = User::find($user_id->toInt());
+        if (!$user) {
+            return \App\Data\ReferralCollectionData::fromServiceResponse([], [
+                'total_referrals' => 0,
+                'converted_referrals' => 0,
+                'conversion_rate' => 0,
+            ]);
+        }
+        
+        $referrals = $user->referrals()->with('invitee')->get();
+        $referralsArray = $referrals->map(function ($referral) {
+            // Map internal status to user-friendly status
+            $status = match($referral->status) {
+                'signed_up' => 'Pending',
+                'converted' => 'Converted',
+                default => $referral->status
+            };
+            
+            return [
+                'id' => $referral->id,
+                'invitee_email' => $referral->invitee->email,
+                'status' => $status,
+                'converted_at' => $referral->converted_at ? $referral->converted_at->format('Y-m-d H:i:s') : null,
+                'bonus_points_awarded' => $referral->bonus_points_awarded,
+                'created_at' => $referral->created_at->format('Y-m-d H:i:s'),
+            ];
+        })->toArray();
+        
+        $totalReferrals = $user->referrals()->count();
+        $convertedReferrals = $user->referrals()->converted()->count();
+        $stats = [
+            'total_referrals' => $totalReferrals,
+            'converted_referrals' => $convertedReferrals,
+            'conversion_rate' => $totalReferrals > 0 ? ($convertedReferrals / $totalReferrals) * 100 : 0,
+        ];
+        
+        return \App\Data\ReferralCollectionData::fromServiceResponse($referralsArray, $stats);
     }
 }

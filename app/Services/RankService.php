@@ -188,8 +188,11 @@ final class RankService {
         $currentRankKey = $user->current_rank_key;
 
         if ($newRank && $currentRankKey !== $newRank->key) {
-            $user->current_rank_key = $newRank->key;
-            $user->save();
+            // Update using repository to maintain consistency
+            $this->userRepository->updateUserData(
+                \App\Domain\ValueObjects\UserId::fromInt($user->id),
+                ['current_rank_key' => $newRank->key]
+            );
             
             // Fire event for rank change
             event(new UserRankChanged($user, $newRank));

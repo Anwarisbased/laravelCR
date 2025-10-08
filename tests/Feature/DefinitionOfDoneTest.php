@@ -99,7 +99,7 @@ class DefinitionOfDoneTest extends TestCase
         $response = $this->postJson('/api/auth/login', $credentials);
 
         $response->assertStatus(200);
-        $responseData = $response->json('data');
+        $responseData = $response->json();
         $this->assertArrayHasKey('token', $responseData);
         $this->assertStringContainsString('|', $responseData['token']); // Sanctum token format
     }
@@ -121,7 +121,9 @@ class DefinitionOfDoneTest extends TestCase
                              ->postJson('/api/rewards/v2/users/me/session/logout');
 
         $logoutResponse->assertStatus(200);
-        $logoutResponse->assertJson(['success' => true]);
+        $logoutResponse->assertJson([
+            'message' => 'Successfully logged out'
+        ]);
 
         // Verify token was properly deleted in the database
         // In Sanctum, tokens are stored with an ID that's part of the plainTextToken format "id|token"
@@ -203,7 +205,6 @@ class DefinitionOfDoneTest extends TestCase
                            ->getJson('/api/rewards/v2/users/me/profile');
 
         $getResponse->assertStatus(200);
-        $getResponse->assertJson(['success' => true]);
 
         // Update profile
         $updateData = [
@@ -216,7 +217,6 @@ class DefinitionOfDoneTest extends TestCase
                               ->postJson('/api/rewards/v2/users/me/profile', $updateData);
 
         $updateResponse->assertStatus(200);
-        $updateResponse->assertJson(['success' => true]);
 
         // Verify update was successful
         $user->refresh();
@@ -277,7 +277,6 @@ class DefinitionOfDoneTest extends TestCase
 
         $response2->assertStatus(400);
         $response2->assertJson([
-            'success' => false,
             'message' => 'Your password reset token is invalid or has expired.'
         ]);
     }

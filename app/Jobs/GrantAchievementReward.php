@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Services\AchievementRewardService;
+use App\Domain\ValueObjects\UserId;
+use App\Domain\ValueObjects\Points;
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
@@ -26,6 +28,10 @@ class GrantAchievementReward implements ShouldQueue
 
     public function handle(AchievementRewardService $achievementRewardService)
     {
-        $achievementRewardService->grantReward($this->userId, $this->pointsReward, $this->reason);
+        $achievementRewardService->grantReward(
+            UserId::fromInt($this->userId), 
+            Points::fromInt($this->pointsReward), 
+            $this->reason
+        );
     }
 }

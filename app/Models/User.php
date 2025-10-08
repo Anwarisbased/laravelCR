@@ -8,9 +8,16 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens; // <--- ADD THIS LINE
 use Illuminate\Support\Facades\App;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->is_admin;
+    }
+    
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable; // <--- ADD HasApiTokens HERE
 
@@ -169,7 +176,7 @@ class User extends Authenticatable
     {
         if (empty($this->meta['_canna_referral_code'] ?? null)) {
             $referralService = App::make(\App\Services\ReferralService::class);
-            $referralService->generate_code_for_new_user($this->id, $this->name ?: 'User');
+            $referralService->generate_code_for_new_user(\App\Domain\ValueObjects\UserId::fromInt($this->id), $this->name ?: 'User');
         }
     }
     
@@ -185,5 +192,29 @@ class User extends Authenticatable
             'achievement_key'
         )->whereNotNull('unlocked_at')
         ->withPivot('unlocked_at', 'trigger_count')->withTimestamps();
+    }
+    
+    /**
+     * User's orders relationship
+     */
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+    
+    /**
+     * Get the user's points balance
+     */
+    public function getPointsBalanceAttribute(): int
+    {
+        return $this->meta[\App\Domain\MetaKeys::POINTS_BALANCE] ?? 0;
+    }
+    
+    /**
+     * User's claimed reward codes relationship
+     */
+    public function claimedRewardCodes()
+    {
+        return $this->hasMany(RewardCode::class);
     }
 }

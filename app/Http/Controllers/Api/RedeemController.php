@@ -6,25 +6,16 @@ use App\Commands\RedeemRewardCommand;
 use App\Domain\ValueObjects\ProductId;
 use App\Domain\ValueObjects\UserId;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\RedeemRewardRequest;
 use App\Services\EconomyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 
 class RedeemController extends Controller
 {
-    public function processRedemption(Request $request)
+    public function processRedemption(RedeemRewardRequest $request)
     {
-        $validated = $request->validate([
-            'productId' => 'required|integer',
-            'shippingDetails.first_name' => 'required|string',
-            // Add other shipping validation rules as needed...
-        ]);
-
-        $command = new RedeemRewardCommand(
-            UserId::fromInt($request->user()->id),
-            ProductId::fromInt($validated['productId']),
-            $validated['shippingDetails']
-        );
+        $command = $request->toCommand();
 
         // Create EconomyService with dependencies using factory method
         $economyService = EconomyService::createWithDependencies(App::getFacadeRoot());
@@ -38,6 +29,6 @@ class RedeemController extends Controller
             'new_points_balance' => $result->newPointsBalance->toInt()
         ];
 
-        return response()->json(['success' => true, 'data' => $response_data]);
+        return response()->json($response_data, 200);
     }
 }

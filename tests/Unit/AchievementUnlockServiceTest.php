@@ -70,7 +70,7 @@ class AchievementUnlockServiceTest extends TestCase
         $this->achievementUnlockService->unlockAchievement($user, $achievement);
 
         Queue::assertPushed(GrantAchievementReward::class, function ($job) use ($user, $achievement) {
-            return $job->userId === $user->id 
+            return $job->userId === $user->id
                 && $job->pointsReward === $achievement->points_reward
                 && $job->reason === "Achievement unlocked: {$achievement->title}";
         });

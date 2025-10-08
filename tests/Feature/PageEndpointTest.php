@@ -29,9 +29,8 @@ class PageEndpointTest extends TestCase
 
         // ASSERT
         $response->assertStatus(200);
-        $response->assertJsonPath('success', true);
-        $response->assertJsonPath('data.title', 'About Our Company');
-        $response->assertJsonPath('data.content', '<p>We are a cool company.</p>');
+        $response->assertJsonPath('title', 'About Our Company');
+        $response->assertJsonPath('content', '<p>We are a cool company.</p>');
     }
 
     /**
@@ -44,7 +43,6 @@ class PageEndpointTest extends TestCase
 
         // ASSERT
         $response->assertStatus(404);
-        $response->assertJsonPath('success', false);
         $response->assertJsonPath('message', 'Page not found.');
     }
 }

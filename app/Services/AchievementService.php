@@ -8,6 +8,7 @@ use App\Models\UserAchievement;
 use App\Notifications\AchievementProgressNotification;
 use App\Jobs\UnlockAchievement;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 
 class AchievementService
@@ -83,14 +84,21 @@ class AchievementService
     
     protected function updateTriggerCount(User $user, Achievement $achievement, int $count): void
     {
-        UserAchievement::updateOrCreate(
-            [
-                'user_id' => $user->id,
-                'achievement_key' => $achievement->achievement_key,
-            ],
-            [
-                'trigger_count' => $count,
-            ]
-        );
+        DB::transaction(function () use ($user, $achievement, $count) {
+            UserAchievement::where('user_id', $user->id)
+                ->where('achievement_key', $achievement->achievement_key)
+                ->lockForUpdate()
+                ->firstOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'achievement_key' => $achievement->achievement_key,
+                    ],
+                    [
+                        'trigger_count' => $count,
+                        'unlocked_at' => null
+                    ]
+                )
+                ->update(['trigger_count' => $count]);
+        });
     }
 }

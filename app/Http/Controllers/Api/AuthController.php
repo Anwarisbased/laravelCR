@@ -10,6 +10,7 @@ use Illuminate\Validation\ValidationException;
 use App\Models\User;
 
 // Import the new request classes
+use App\Http\Requests\Api\LoginRequest;
 use App\Http\Requests\Api\RegisterUserRequest;
 use App\Http\Requests\Api\RegisterWithTokenRequest;
 use App\Http\Requests\Api\RequestPasswordResetRequest;
@@ -18,35 +19,23 @@ use App\Http\Requests\Api\PerformPasswordResetRequest;
 
 class AuthController extends Controller
 {
-    public function login(Request $request) {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ]);
+    public function login(LoginRequest $request, UserService $userService) {
+        try {
+            $command = $request->toCommand();
+            $result = $userService->login($command->email, $command->password);
 
-        $user = \App\Models\User::where('email', $credentials['email'])->first();
-
-        if (!$user || !Hash::check($credentials['password'], $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
+            // Return the data class properties
+            return response()->json([
+                'token' => $result->token,
+                'user_email' => $result->user_email,
+                'user_nicename' => $result->user_nicename,
+                'user_display_name' => $result->user_display_name,
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage()
+            ], 422); // Validation exception for incorrect credentials
         }
-
-        // Revoke all existing tokens for this user
-        $user->tokens()->delete();
-
-        // Create a new token
-        $token = $user->createToken('auth-token')->plainTextToken;
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'token' => $token,
-                'user_email' => $user->email,
-                'user_nicename' => $user->name,
-                'user_display_name' => $user->name,
-            ]
-        ]);
     }
 
     public function register(RegisterUserRequest $request, UserService $userService)
@@ -55,8 +44,16 @@ class AuthController extends Controller
             $command = $request->toCommand();
             $result = $userService->handle($command);
 
-            // This will create the user and return a simple success message
-            return response()->json($result, 201);
+            // User was created successfully, now log them in to return auth token
+            $loginResult = $userService->login($command->email, $command->password);
+
+            // Return the login result which contains the token and user info
+            return response()->json([
+                'token' => $loginResult->token,
+                'user_email' => $loginResult->user_email,
+                'user_nicename' => $loginResult->user_nicename,
+                'user_display_name' => $loginResult->user_display_name,
+            ], 201);
         } catch (Exception $e) {
             // Check if it's a duplicate email exception
             if (strpos($e->getMessage(), 'An account with that email already exists') !== false) {
@@ -79,8 +76,16 @@ class AuthController extends Controller
         $result = $userService->handle($command);
         
         // This will create the user, process their first scan, and return a login token
-        // The result is already in the correct format from the service layer.
-        return response()->json($result, 200);
+        // After user is created, log them in to return auth token
+        $loginResult = $userService->login($command->email, $command->password);
+
+        // Return the login result which contains the token and user info
+        return response()->json([
+            'token' => $loginResult->token,
+            'user_email' => $loginResult->user_email,
+            'user_nicename' => $loginResult->user_nicename,
+            'user_display_name' => $loginResult->user_display_name,
+        ], 200);
     }
 
     public function requestPasswordReset(RequestPasswordResetRequest $request, UserService $userService)
@@ -89,12 +94,10 @@ class AuthController extends Controller
             $userService->request_password_reset($request->getEmail());
             
             return response()->json([
-                'success' => true,
                 'message' => 'If an account with that email exists, a password reset link has been sent.'
-            ]);
+            ], 200);
         } catch (\Exception $e) {
             return response()->json([
-                'success' => false,
                 'message' => 'An error occurred while processing your request. Please try again later.'
             ], 500);
         }
@@ -104,23 +107,20 @@ class AuthController extends Controller
     {
         try {
             $userService->perform_password_reset(
-                $request->getToken(),
+                \App\Domain\ValueObjects\ResetToken::fromString($request->getToken()),
                 $request->getEmail(),
-                $request->getPassword()
+                $request->getNewPassword()
             );
             
             return response()->json([
-                'success' => true,
                 'message' => 'Your password has been reset successfully. You can now log in with your new password.'
-            ]);
+            ], 200);
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
             return response()->json([
-                'success' => false,
                 'message' => $e->getMessage()
             ], $e->getStatusCode());
         } catch (\Exception $e) {
             return response()->json([
-                'success' => false,
                 'message' => $e->getMessage()
             ], 500);
         }

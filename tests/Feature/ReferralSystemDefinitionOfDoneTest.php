@@ -142,7 +142,7 @@ class ReferralSystemDefinitionOfDoneTest extends TestCase
         $this->assertEquals($referrer->referral_code, $referral->referral_code);
         
         // Verify the referral appears in the referrer's referral list
-        $referrals = $referralService->get_user_referrals($referrer->id);
+        $referrals = $referralService->get_user_referrals(\App\Domain\ValueObjects\UserId::fromInt($referrer->id));
         $this->assertCount(1, $referrals);
         $this->assertEquals($invitee->email, $referrals[0]['invitee_email']);
     }
@@ -329,7 +329,7 @@ class ReferralSystemDefinitionOfDoneTest extends TestCase
         $referralService->processConversion($invitee1);
         
         // Get referral stats
-        $stats = $referralService->get_referral_stats($referrer->id);
+        $stats = $referralService->get_referral_stats(\App\Domain\ValueObjects\UserId::fromInt($referrer->id));
         
         // Verify stats
         $this->assertEquals(2, $stats['total_referrals']);

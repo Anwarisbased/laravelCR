@@ -11,6 +11,18 @@ use App\Services\ReferralNudgeService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * Referral Controller
+ * 
+ * This controller handles user referral data and operations.
+ * The ReferralService now returns standardized Data objects.
+ * 
+ * All responses follow the format:
+ * {
+ *   "success": true,
+ *   "data": { ... }
+ * }
+ */
 class ReferralController extends Controller
 {
     private ReferralService $referralService;
@@ -27,36 +39,28 @@ class ReferralController extends Controller
     public function getMyReferrals(Request $request): JsonResponse
     {
         $user = $request->user();
-        $referrals = $this->referralService->get_user_referrals($user->id);
-        $stats = $this->referralService->get_referral_stats($user->id);
+        $userId = \App\Domain\ValueObjects\UserId::fromInt($user->id);
+        $referralData = $this->referralService->get_user_referral_data($userId);
         
-        return response()->json([
-            'success' => true, 
-            'data' => [
-                'referrals' => $referrals,
-                'stats' => $stats
-            ]
-        ]);
+        return response()->json($referralData, 200);
     }
     
     public function getNudgeOptions(GetNudgeOptionsRequest $request): JsonResponse
     {
-        $options = $this->nudgeService->getNudgeOptions($request->user(), $request->validated()['email']);
-        return response()->json(['success' => true, 'data' => $options]);
+        $options = $this->nudgeService->getNudgeOptions($request->user(), \App\Domain\ValueObjects\EmailAddress::fromString($request->validated()['email']));
+        return response()->json($options, 200);
     }
     
     public function processReferral(ProcessReferralRequest $request): JsonResponse
     {
-        $result = $this->referralService->processSignUp($request->user(), $request->validated()['referral_code']);
+        $result = $this->referralService->processSignUp($request->user(), \App\Domain\ValueObjects\ReferralCode::fromString($request->validated()['referral_code']));
         
         if ($result) {
             return response()->json([
-                'success' => true,
                 'message' => 'Referral processed successfully'
-            ]);
+            ], 200);
         } else {
             return response()->json([
-                'success' => false,
                 'message' => 'Failed to process referral'
             ], 400);
         }

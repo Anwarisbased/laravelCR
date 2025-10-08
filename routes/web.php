@@ -1,8 +1,9 @@
 <?php
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
+use App\Models\RewardCode;
+use App\Models\Product;
 
 // Remove the circular redirects that cause the redirect loop
 // Filament will handle its own authentication routes automatically
@@ -18,13 +19,12 @@ Route::get('/', function () {
 // Route for downloading all QR codes for a product (for reference)
 Route::get('/admin/download-qr-codes/{productId}', function ($productId) {
     // Get the QR codes for the specific product
-    $qrCodes = DB::table('reward_codes')
-        ->where('product_id', $productId)
+    $qrCodes = RewardCode::where('product_id', $productId)
         ->select('code', 'sku')
         ->get();
     
     // Get product name for the filename
-    $product = DB::table('products')->where('id', $productId)->first();
+    $product = Product::find($productId);
     
     if (!$product) {
         abort(404, 'Product not found');

@@ -29,6 +29,8 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'current_rank_key' => 'member',  // Default to member rank
+            'lifetime_points' => 0,          // Default to 0 lifetime points
         ];
     }
 

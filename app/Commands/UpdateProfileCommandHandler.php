@@ -92,13 +92,15 @@ final class UpdateProfileCommandHandler {
             $first_name = $user_meta['first_name'] ?? $user->name;
             $last_name = $user_meta['last_name'] ?? '';
             $user_name = trim($first_name . ' ' . $last_name);
-            $user->update(['name' => $user_name]);
+            
+            // Update using repository instead of direct model update
+            $this->user_repository->updateUserData($user_id, ['name' => $user_name]);
         }
 
         if (!empty($changed_fields)) {
             $log_meta_data = ['changed_fields' => $changed_fields];
-            $this->action_log_service->record($command->user_id, 'profile_updated', 0, $log_meta_data);
-            $this->cdp_service->track($command->user_id, 'user_profile_updated', $log_meta_data);
+            $this->action_log_service->record($user_id, 'profile_updated', 0, $log_meta_data);
+            $this->cdp_service->track($user_id, 'user_profile_updated', $log_meta_data);
         }
     }
 }

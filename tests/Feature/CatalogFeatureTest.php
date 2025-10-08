@@ -48,12 +48,12 @@ class CatalogFeatureTest extends TestCase
         ]);
 
         // ACT
-        $response = $this->getJson('/api/rewards/v2/catalog/products/v2');
+        $response = $this->getJson('/api/rewards/v2/catalog/products');
 
         // ASSERT
         $response->assertStatus(200);
         $response->assertJsonStructure([
-            'data' => [
+            'products' => [
                 [
                     'id',
                     'name',
@@ -82,7 +82,7 @@ class CatalogFeatureTest extends TestCase
         ]);
         
         // Verify that the products are returned
-        $this->assertGreaterThanOrEqual(2, count($response->json('data')));
+        $this->assertGreaterThanOrEqual(2, count($response->json('products')));
     }
 
     public function test_product_details_are_properly_formatted_for_api_response_with_all_metadata(): void
@@ -117,11 +117,11 @@ class CatalogFeatureTest extends TestCase
         ]);
 
         // ACT
-        $response = $this->getJson("/api/rewards/v2/catalog/products/{$product->id}/v2");
+        $response = $this->getJson("/api/rewards/v2/catalog/products/{$product->id}");
 
         // ASSERT
         $response->assertStatus(200);
-        $data = $response->json()['data'];
+        $data = $response->json();
         
         $this->assertEquals($product->id, $data['id']);
         $this->assertEquals($product->name, $data['name']);
@@ -143,8 +143,8 @@ class CatalogFeatureTest extends TestCase
         $this->assertEquals($product->image_urls, $data['images']);
         $this->assertEquals($product->tags, $data['tags']);
         // Compare dates as strings since they'll be serialized differently
-        $this->assertEquals($product->available_from->toISOString(), $data['available_from']);
-        $this->assertEquals($product->available_until->toISOString(), $data['available_until']);
+        $this->assertEquals($product->available_from->format('Y-m-d H:i:s'), $data['available_from']);
+        $this->assertEquals($product->available_until->format('Y-m-d H:i:s'), $data['available_until']);
     }
 
     public function test_product_images_are_correctly_handled_and_formatted_with_thumbnails(): void
@@ -161,11 +161,11 @@ class CatalogFeatureTest extends TestCase
         ]);
 
         // ACT
-        $response = $this->getJson("/api/rewards/v2/catalog/products/{$product->id}/v2");
+        $response = $this->getJson("/api/rewards/v2/catalog/products/{$product->id}");
 
         // ASSERT
         $response->assertStatus(200);
-        $data = $response->json()['data'];
+        $data = $response->json();
         
         $this->assertEquals($product->image_urls, $data['images']);
     }
@@ -191,11 +191,11 @@ class CatalogFeatureTest extends TestCase
 
         // ACT
         $response = $this->actingAs($user, 'sanctum')
-            ->getJson("/api/rewards/v2/catalog/products/{$welcomeProduct->id}/v2");
+            ->getJson("/api/rewards/v2/catalog/products/{$welcomeProduct->id}");
 
         // ASSERT
         $response->assertStatus(200);
-        $data = $response->json()['data'];
+        $data = $response->json();
         
         // For first-time users, the welcome gift should be eligible for free claim
         $this->assertArrayHasKey('eligibility', $data);
@@ -223,11 +223,11 @@ class CatalogFeatureTest extends TestCase
 
         // ACT
         $response = $this->actingAs($user, 'sanctum')
-            ->getJson("/api/rewards/v2/catalog/products/{$referralProduct->id}/v2");
+            ->getJson("/api/rewards/v2/catalog/products/{$referralProduct->id}");
 
         // ASSERT
         $response->assertStatus(200);
-        $data = $response->json()['data'];
+        $data = $response->json();
         
         $this->assertArrayHasKey('eligibility', $data);
         $this->assertArrayHasKey('eligible_for_free_claim', $data['eligibility']);
@@ -259,11 +259,11 @@ class CatalogFeatureTest extends TestCase
         ]);
 
         // ACT
-        $response = $this->getJson("/api/rewards/v2/catalog/products/{$product->id}/v2");
+        $response = $this->getJson("/api/rewards/v2/catalog/products/{$product->id}");
 
         // ASSERT
         $response->assertStatus(200);
-        $data = $response->json()['data'];
+        $data = $response->json();
         
         $this->assertEquals($product->points_award, $data['points_award']);
         $this->assertEquals($product->points_cost, $data['points_cost']);
@@ -317,11 +317,11 @@ class CatalogFeatureTest extends TestCase
 
         // ACT
         $response = $this->actingAs($user, 'sanctum')
-            ->getJson("/api/rewards/v2/catalog/products/{$highCostProduct->id}/v2");
+            ->getJson("/api/rewards/v2/catalog/products/{$highCostProduct->id}");
 
         // ASSERT
         $response->assertStatus(200);
-        $data = $response->json()['data'];
+        $data = $response->json();
         
         $this->assertArrayHasKey('eligibility', $data);
         $this->assertArrayHasKey('is_eligible', $data['eligibility']);
@@ -362,8 +362,8 @@ class CatalogFeatureTest extends TestCase
         $featuredResponse->assertStatus(200);
         $newResponse->assertStatus(200);
         
-        $featuredData = $featuredResponse->json()['data'];
-        $newData = $newResponse->json()['data'];
+        $featuredData = $featuredResponse->json();
+        $newData = $newResponse->json();
         
         // At least one featured product should exist
         $this->assertGreaterThanOrEqual(1, count($featuredData));
@@ -397,9 +397,8 @@ class CatalogFeatureTest extends TestCase
 
         // ASSERT
         $response->assertStatus(200);
-        $response->assertJson(['success' => true]);
         
-        $categories = $response->json()['data'];
+        $categories = $response->json();
         $this->assertGreaterThanOrEqual(1, count($categories));
     }
 
@@ -416,7 +415,6 @@ class CatalogFeatureTest extends TestCase
 
         // ASSERT
         $response->assertStatus(404);
-        $response->assertJson(['success' => false]);
     }
 
     public function test_performance_benchmarks_met_response_time_less_than_200ms(): void
@@ -466,11 +464,11 @@ class CatalogFeatureTest extends TestCase
         \App::make(\App\Services\CatalogService::class)->clearCache();
 
         // Second request after invalidation
-        $secondResponse = $this->getJson('/api/rewards/v2/catalog/products/v2');
+        $secondResponse = $this->getJson('/api/rewards/v2/catalog/products');
         $secondResponseData = $secondResponse->json();
 
         // ASSERT - The product name should be updated in the second response
-        $updatedProduct = collect($secondResponseData['data'])->firstWhere('id', $product->id);
+        $updatedProduct = collect($secondResponseData['products'])->firstWhere('id', $product->id);
         $this->assertEquals('Updated Product Name', $updatedProduct['name']);
     }
 }

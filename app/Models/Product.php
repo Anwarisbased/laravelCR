@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
 
 class Product extends Model
 {
+    use HasFactory;
     protected $fillable = [
         'name',
         'sku',
@@ -85,6 +87,12 @@ class Product extends Model
     public function scopeNew(Builder $query): Builder
     {
         return $query->where('is_new', true);
+    }
+    
+    // Relationships
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
     }
     
     // Methods

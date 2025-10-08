@@ -15,15 +15,16 @@ class RankController extends Controller
      */
     public function getRanks()
     {
-        $ranks = Cache::remember('all_ranks', 3600, function () {
+        $rankModels = Cache::remember('all_ranks', 3600, function () {
             return Rank::where('points_required', '>=', 0)->orderBy('points_required')->get();
         });
 
+        $ranksData = $rankModels->map(function ($rankModel) {
+            return \App\Data\RankData::fromModel($rankModel);
+        });
+
         return response()->json([
-            'success' => true,
-            'data' => [
-                'ranks' => $ranks
-            ]
+            'ranks' => $ranksData
         ]);
     }
 
@@ -36,17 +37,13 @@ class RankController extends Controller
         
         if (!$user) {
             return response()->json([
-                'success' => false,
                 'message' => 'User not found'
             ], 404);
         }
 
         $rankData = $this->calculateUserRankData($user);
 
-        return response()->json([
-            'success' => true,
-            'data' => $rankData
-        ]);
+        return response()->json($rankData);
     }
 
     /**
@@ -64,7 +61,6 @@ class RankController extends Controller
         if (!$user) {
             \Log::warning('User not authenticated in getMyRank');
             return response()->json([
-                'success' => false,
                 'message' => 'User not authenticated'
             ], 401);
         }
@@ -72,18 +68,14 @@ class RankController extends Controller
         try {
             $rankData = $this->calculateUserRankData($user);
 
-            return response()->json([
-                'success' => true,
-                'data' => $rankData
-            ]);
+            return response()->json($rankData);
         } catch (\Exception $e) {
             \Log::error('Error in getMyRank', [
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
             return response()->json([
-                'success' => false,
-                'message' => 'Error calculating rank data: ' . $e->getMessage()
+                'message' => 'An error occurred while calculating your rank data'
             ], 500);
         }
     }
@@ -141,8 +133,8 @@ class RankController extends Controller
         }
 
         return [
-            'current_rank' => $currentRank ? $currentRank->toArray() : null,
-            'next_rank' => $nextRank ? $nextRank->toArray() : null,
+            'current_rank' => $currentRank ? \App\Data\RankData::fromModel($currentRank) : null,
+            'next_rank' => $nextRank ? \App\Data\RankData::fromModel($nextRank) : null,
             'lifetime_points' => $lifetimePoints,
             'progress_percent' => round($progressPercent, 2),
             'points_to_next' => $pointsToNext,

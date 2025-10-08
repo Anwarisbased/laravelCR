@@ -40,6 +40,8 @@ class UserRepository
             'name' => $firstName . ' ' . $lastName,
             'email' => $email->value,
             'password' => $password->value,
+            'current_rank_key' => 'member',  // Default to member rank
+            'lifetime_points' => 0,          // Default to 0 lifetime points
             'meta' => [
                 'first_name' => $firstName,
                 'last_name' => $lastName,
@@ -130,6 +132,26 @@ class UserRepository
         $code = $meta[MetaKeys::REFERRAL_CODE] ?? null;
         return $code ? (string) $code : null;
     }
+    
+    /**
+     * Gets multiple user meta values in a single query
+     */
+    public function getUserCoreAndMeta(UserId $userId): ?array 
+    {
+        $user = User::find($userId->toInt());
+        if (!$user) {
+            return null;
+        }
+
+        $meta = $user->meta ?: [];
+        return [
+            'user' => $user,
+            'points_balance' => (int) ($meta[MetaKeys::POINTS_BALANCE] ?? 0),
+            'lifetime_points' => (int) ($meta[MetaKeys::LIFETIME_POINTS] ?? 0),
+            'current_rank_key' => (string) ($meta[MetaKeys::CURRENT_RANK_KEY] ?? 'member'),
+            'referral_code' => $meta[MetaKeys::REFERRAL_CODE] ?? null,
+        ];
+    }
 
     public function findUserIdByReferralCode(string $referral_code): ?int 
     {
@@ -153,30 +175,25 @@ class UserRepository
     }
 
     /**
-     * Gets the user's shipping address as a formatted DTO.
+     * Gets the user's shipping address as a formatted Data object.
      */
-    public function getShippingAddressDTO(UserId $userId): ShippingAddressDTO 
+    public function getShippingAddressData(UserId $userId): \App\Data\ShippingAddressData 
     {
         $user = User::find($userId->toInt());
         if (!$user) {
-            return new ShippingAddressDTO(
-                firstName: '',
-                lastName: '',
-                address1: '',
-                city: '',
-                state: '',
-                postcode: ''
-            );
+            return \App\Data\ShippingAddressData::createEmpty();
         }
 
         $meta = $user->meta ?: [];
-        return new ShippingAddressDTO(
-            firstName: $meta['shipping_first_name'] ?? '',
-            lastName: $meta['shipping_last_name'] ?? '',
-            address1: $meta['shipping_address_1'] ?? '',
-            city: $meta['shipping_city'] ?? '',
-            state: $meta['shipping_state'] ?? '',
-            postcode: $meta['shipping_postcode'] ?? ''
+        return \App\Data\ShippingAddressData::fromShippingAddressDTO(
+            new \App\DTO\ShippingAddressDTO(
+                firstName: $meta['shipping_first_name'] ?? '',
+                lastName: $meta['shipping_last_name'] ?? '',
+                address1: $meta['shipping_address_1'] ?? '',
+                city: $meta['shipping_city'] ?? '',
+                state: $meta['shipping_state'] ?? '',
+                postcode: $meta['shipping_postcode'] ?? ''
+            )
         );
     }
 
@@ -185,7 +202,15 @@ class UserRepository
      */
     public function getShippingAddressArray(UserId $userId): array 
     {
-        return (array) $this->getShippingAddressDTO($userId);
+        $shippingAddressData = $this->getShippingAddressData($userId);
+        return [
+            'firstName' => $shippingAddressData->firstName,
+            'lastName' => $shippingAddressData->lastName,
+            'address1' => $shippingAddressData->address1,
+            'city' => $shippingAddressData->city,
+            'state' => $shippingAddressData->state,
+            'postcode' => $shippingAddressData->postcode
+        ];
     }
 
     public function savePointsAndRank(UserId $userId, int $new_balance, int $new_lifetime_points, string $new_rank_key): void 
@@ -195,12 +220,13 @@ class UserRepository
             throw new \Exception('User not found', 404);
         }
 
+        $meta = $user->meta ?: [];
+        $meta[MetaKeys::POINTS_BALANCE] = $new_balance;
+
         $user->update([
-            'meta' => array_merge($user->meta ?: [], [
-                MetaKeys::POINTS_BALANCE => $new_balance,
-                MetaKeys::LIFETIME_POINTS => $new_lifetime_points,
-                MetaKeys::CURRENT_RANK_KEY => $new_rank_key,
-            ])
+            'meta' => $meta,
+            'lifetime_points' => $new_lifetime_points,
+            'current_rank_key' => $new_rank_key,
         ]);
     }
     

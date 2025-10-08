@@ -12,6 +12,6 @@ class ConfigController extends Controller
     public function getAppConfig()
     {
         $config = $this->configService->get_app_config();
-        return response()->json(['success' => true, 'data' => $config]);
+        return response()->json($config);
     }
 }

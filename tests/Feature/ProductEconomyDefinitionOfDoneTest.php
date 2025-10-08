@@ -49,7 +49,7 @@ class ProductEconomyDefinitionOfDoneTest extends TestCase
 
         // ASSERT
         $response->assertStatus(202); // 202 Accepted for async processing
-        $response->assertJson(['success' => true, 'status' => 'accepted']);
+        $response->assertJson(['status' => 'accepted']);
         
         // Verify the reward code is now used
         $this->assertDatabaseHas('reward_codes', [
@@ -80,7 +80,6 @@ class ProductEconomyDefinitionOfDoneTest extends TestCase
         // ASSERT
         $response->assertStatus(409); // Conflict status for used code
         $response->assertJson([
-            'success' => false,
             'message' => 'This code is invalid or has already been used.'
         ]);
         
@@ -93,7 +92,6 @@ class ProductEconomyDefinitionOfDoneTest extends TestCase
         // Should return appropriate error response
         $nonExistentResponse->assertStatus(409);
         $nonExistentResponse->assertJson([
-            'success' => false,
             'message' => 'This code is invalid or has already been used.'
         ]);
     }
@@ -392,10 +390,7 @@ class ProductEconomyDefinitionOfDoneTest extends TestCase
         // ASSERT
         $response->assertStatus(200);
         $response->assertJsonStructure([
-            'success',
-            'data' => [
-                'products' => [[]]
-            ]
+            'products' => [[]]
         ]);
         
         // Performance test - ensure response is reasonably fast
@@ -437,7 +432,7 @@ class ProductEconomyDefinitionOfDoneTest extends TestCase
         // ASSERT
         // The endpoint returns 202 (Accepted) for async processing as per the implementation
         $response->assertStatus(202);
-        $response->assertJson(['success' => true, 'status' => 'accepted']);
+        $response->assertJson(['status' => 'accepted']);
     }
 
     public function test_unauthenticated_user_can_scan_valid_qr_code(): void
@@ -470,8 +465,8 @@ class ProductEconomyDefinitionOfDoneTest extends TestCase
         // ASSERT
         // Should return status requiring registration
         $response->assertStatus(200);
-        $response->assertJsonPath('data.status', 'registration_required');
-        $registrationToken = $response->json('data.registration_token');
+        $response->assertJsonPath('status', 'registration_required');
+        $registrationToken = $response->json('registration_token');
         $this->assertIsString($registrationToken);
         $this->assertNotEmpty($registrationToken);
     }
@@ -503,12 +498,8 @@ class ProductEconomyDefinitionOfDoneTest extends TestCase
 
         // ASSERT
         $response->assertStatus(200);
-        $response->assertJson(['success' => true]);
         $response->assertJsonStructure([
-            'success',
-            'data' => [
-                'products' => [[]]
-            ]
+            'products' => [[]]
         ]);
     }
 
@@ -531,17 +522,13 @@ class ProductEconomyDefinitionOfDoneTest extends TestCase
 
         // ASSERT
         $response->assertStatus(200);
-        $response->assertJson(['success' => true]);
         $response->assertJsonStructure([
-            'success',
-            'data' => [
-                'id',
-                'name',
-                'description',
-                'images' => [[]],
-                'meta_data' => [[]]
-            ]
+            'id',
+            'name',
+            'description',
+            'images',
+            'meta_data'
         ]);
-        $response->assertJsonPath('data.id', $product->id);
+        $response->assertJsonPath('id', $product->id);
     }
 }

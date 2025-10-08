@@ -3,6 +3,7 @@ namespace App\Services;
 
 use JsonSchema\Validator;
 use Exception;
+use App\Domain\ValueObjects\UserId;
 
 final class EventFactory {
     private ContextBuilderService $contextBuilder;
@@ -18,7 +19,7 @@ final class EventFactory {
     /**
      * Creates a fully-formed and validated 'product_scanned' event payload.
      */
-    public function createProductScannedEvent(int $userId, \WP_Post $productPost, bool $isFirstScan): array {
+    public function createProductScannedEvent(\App\Domain\ValueObjects\UserId $userId, \WP_Post $productPost, bool $isFirstScan): array {
         $payload = $this->contextBuilder->build_event_context($userId, $productPost);
         $payload['is_first_scan'] = $isFirstScan;
 

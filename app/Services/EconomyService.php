@@ -111,11 +111,17 @@ final class EconomyService {
                 \App\Commands\RedeemRewardCommand::class => \App\Commands\RedeemRewardCommandHandler::class,
                 \App\Commands\GrantPointsCommand::class => \App\Commands\GrantPointsCommandHandler::class,
                 \App\Commands\ProcessProductScanCommand::class => \App\Commands\ProcessProductScanCommandHandler::class,
+                \App\Commands\ProcessUnauthenticatedClaimCommand::class => \App\Commands\ProcessUnauthenticatedClaimCommandHandler::class,
             ],
             $container->make(RankService::class),
             $container->make(ContextBuilderService::class),
             $container->make(UserRepository::class),
             $container->make(\App\Commands\GrantPointsCommandHandler::class)
         );
+    }
+    
+    public function getUserRepository(): UserRepository
+    {
+        return $this->userRepository;
     }
 }

@@ -54,8 +54,8 @@ final class ProcessProductScanCommandHandler {
         // --- ANTI-FRAGILE REFACTOR ---
 
         // 1. Log the scan to establish its history and count.
-        $this->logService->record($command->userId->toInt(), 'scan', $product_id->toInt());
-        $scan_count = $this->logRepo->countUserActions($command->userId->toInt(), 'scan');
+        $this->logService->record($command->userId, 'scan', $product_id->toInt());
+        $scan_count = $this->logRepo->countUserActions($command->userId, 'scan');
         \Illuminate\Support\Facades\Log::info('ProcessProductScanCommandHandler: Scan count', [
             'user_id' => $command->userId->toInt(),
             'scan_count' => $scan_count
@@ -70,7 +70,7 @@ final class ProcessProductScanCommandHandler {
         
         // 3. Build the rich context for the event.
         $product_post = $product_id ? (object)['ID' => $product_id->toInt()] : null;
-        $context = $this->contextBuilder->build_event_context($command->userId->toInt(), $product_post);
+        $context = $this->contextBuilder->build_event_context($command->userId, $product_post);
 
         // 4. BE EXPLICIT: Dispatch a different event based on the business context.
         if ($is_first_scan) {

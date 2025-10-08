@@ -41,20 +41,17 @@ class ReferralTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJson([
-                'success' => true,
-                'data' => [
-                    'referrals' => [
-                        [
-                            'invitee_email' => $invitee->email,
-                            'status' => 'Converted',
-                            'bonus_points_awarded' => 500,
-                        ]
-                    ],
-                    'stats' => [
-                        'total_referrals' => 1,
-                        'converted_referrals' => 1,
-                        'conversion_rate' => 100,
+                'referrals' => [
+                    [
+                        'invitee_email' => $invitee->email,
+                        'status' => 'Converted',
+                        'bonus_points_awarded' => 500,
                     ]
+                ],
+                'stats' => [
+                    'total_referrals' => 1,
+                    'converted_referrals' => 1,
+                    'conversion_rate' => 100,
                 ]
             ]);
     }
@@ -104,25 +101,6 @@ class ReferralTest extends TestCase
         $this->assertFalse($result);
     }
 
-    public function test_get_nudge_options(): void
-    {
-        $user = User::factory()->create();
-        
-        $response = $this->actingAs($user, 'sanctum')
-            ->postJson('/api/rewards/v2/users/me/referrals/nudge', [
-                'email' => 'newuser@example.com'
-            ]);
-
-        $response->assertStatus(200)
-            ->assertJson([
-                'success' => true,
-                'data' => [
-                    'can_nudge' => true,
-                    'referral_code' => $user->referral_code,
-                ]
-            ]);
-    }
-
     public function test_get_referral_stats(): void
     {
         $referrer = User::factory()->create();
@@ -146,14 +124,31 @@ class ReferralTest extends TestCase
         ]);
 
         $referralService = app(\App\Services\ReferralService::class);
-        $stats = $referralService->get_referral_stats($referrer->id);
+        $stats = $referralService->get_referral_stats(\App\Domain\ValueObjects\UserId::fromInt($referrer->id));
 
         $this->assertEquals(2, $stats['total_referrals']);
         $this->assertEquals(1, $stats['converted_referrals']);
         $this->assertEquals(50, $stats['conversion_rate']);
     }
 
-    public function test_process_referral_endpoint(): void
+    public function test_nudge_referral(): void
+    {
+        $user = User::factory()->create();
+        
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/rewards/v2/users/me/referrals/nudge', [
+                'email' => 'friend@example.com'
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'can_nudge' => true,
+                'message' => 'Invite friend@example.com to earn bonus points!',
+                'referral_code' => $user->referral_code,
+            ]);
+    }
+
+    public function test_process_referral(): void
     {
         $referrer = User::factory()->create();
         $invitee = User::factory()->create();
@@ -172,7 +167,6 @@ class ReferralTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJson([
-                'success' => true,
                 'message' => 'Referral processed successfully'
             ]);
     }

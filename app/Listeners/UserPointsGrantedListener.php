@@ -57,7 +57,7 @@ class UserPointsGrantedListener
                 (string)$new_rank_dto->key
             );
             
-            $context = $this->contextBuilder->build_event_context($user_id);
+            $context = $this->contextBuilder->build_event_context($userIdVO);
             
             // Dispatch Laravel event instead of using custom event bus
             Event::dispatch(new UserRankChanged(

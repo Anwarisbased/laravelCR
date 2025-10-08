@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
+use App\Domain\ValueObjects\EmailAddress;
+use App\Domain\ValueObjects\PlainTextPassword;
 
 class PerformPasswordResetRequest extends FormRequest
 {
@@ -20,9 +22,9 @@ class PerformPasswordResetRequest extends FormRequest
         ];
     }
     
-    public function getEmail(): string
+    public function getEmail(): EmailAddress
     {
-        return $this->validated()['email'];
+        return EmailAddress::fromString($this->validated()['email']);
     }
     
     public function getToken(): string
@@ -30,8 +32,8 @@ class PerformPasswordResetRequest extends FormRequest
         return $this->validated()['token'];
     }
     
-    public function getPassword(): string
+    public function getNewPassword(): PlainTextPassword
     {
-        return $this->validated()['password'];
+        return PlainTextPassword::fromString($this->validated()['password']);
     }
 }

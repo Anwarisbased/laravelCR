@@ -36,10 +36,10 @@ class UserServiceTest extends TestCase
         ]);
 
         // ACT
-        $sessionData = $this->userService->get_user_session_data(app('App\Domain\ValueObjects\UserId', ['id' => $user->id]));
+        $sessionData = $this->userService->get_user_session_data(\App\Domain\ValueObjects\UserId::fromInt($user->id));
 
         // ASSERT
-        $this->assertEquals($user->id, $sessionData->id->toInt());
+        $this->assertEquals($user->id, $sessionData->id);
         $this->assertEquals('Test', $sessionData->firstName);
         $this->assertEquals('User', $sessionData->lastName);
         $this->assertEquals('session@example.com', (string)$sessionData->email);
@@ -62,7 +62,7 @@ class UserServiceTest extends TestCase
         ]);
 
         // ACT
-        $profileData = $this->userService->get_full_profile_data(app('App\Domain\ValueObjects\UserId', ['id' => $user->id]));
+        $profileData = $this->userService->get_full_profile_data(\App\Domain\ValueObjects\UserId::fromInt($user->id));
 
         // ASSERT
         $this->assertEquals('Test', $profileData->firstName);
@@ -81,7 +81,7 @@ class UserServiceTest extends TestCase
         ]);
 
         // ACT
-        $this->userService->request_password_reset('reset@example.com');
+        $this->userService->request_password_reset(\App\Domain\ValueObjects\EmailAddress::fromString('reset@example.com'));
 
         // ASSERT
         $this->assertDatabaseHas('password_reset_tokens', [
@@ -102,7 +102,7 @@ class UserServiceTest extends TestCase
         $token = Password::createToken($user);
 
         // ACT
-        $this->userService->perform_password_reset($token, 'reset2@example.com', 'newpassword123');
+        $this->userService->perform_password_reset($token, \App\Domain\ValueObjects\EmailAddress::fromString('reset2@example.com'), \App\Domain\ValueObjects\PlainTextPassword::fromString('newpassword123'));
 
         // ASSERT
         // Refresh the user from the database
@@ -127,7 +127,7 @@ class UserServiceTest extends TestCase
 
         // ACT & ASSERT
         $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
-        $this->userService->perform_password_reset('invalid-token', 'invalid@example.com', 'newpassword123');
+        $this->userService->perform_password_reset('invalid-token', \App\Domain\ValueObjects\EmailAddress::fromString('invalid@example.com'), \App\Domain\ValueObjects\PlainTextPassword::fromString('newpassword123'));
     }
 
     public function test_login_returns_correct_token_and_user_data(): void
@@ -144,13 +144,13 @@ class UserServiceTest extends TestCase
         ]);
 
         // ACT
-        $result = $this->userService->login('login@example.com', 'password123');
+        $result = $this->userService->login(\App\Domain\ValueObjects\EmailAddress::fromString('login@example.com'), \App\Domain\ValueObjects\PlainTextPassword::fromString('password123'));
 
         // ASSERT
-        $this->assertTrue($result['success']);
-        $this->assertArrayHasKey('token', $result['data']);
-        $this->assertEquals('login@example.com', $result['data']['user_email']);
-        $this->assertEquals('Login', $result['data']['user_nicename']);
+        $this->assertNotNull($result);
+        $this->assertIsString($result->token);
+        $this->assertEquals('login@example.com', $result->user_email);
+        $this->assertEquals('Login', $result->user_nicename);
     }
 
     public function test_login_fails_with_invalid_credentials(): void
@@ -163,6 +163,6 @@ class UserServiceTest extends TestCase
 
         // ACT & ASSERT
         $this->expectException(\Exception::class);
-        $this->userService->login('loginfail@example.com', 'wrongpassword');
+        $this->userService->login(\App\Domain\ValueObjects\EmailAddress::fromString('loginfail@example.com'), \App\Domain\ValueObjects\PlainTextPassword::fromString('wrongpassword'));
     }
 }

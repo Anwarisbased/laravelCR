@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
+use App\Domain\ValueObjects\EmailAddress;
 
 class RequestPasswordResetRequest extends FormRequest
 {
@@ -18,8 +19,8 @@ class RequestPasswordResetRequest extends FormRequest
         ];
     }
     
-    public function getEmail(): string
+    public function getEmail(): EmailAddress
     {
-        return $this->validated()['email'];
+        return EmailAddress::fromString($this->validated()['email']);
     }
 }

@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Data\AchievementData;
 use App\Models\User;
 use App\Models\Achievement;
 use App\Services\AchievementProgressService;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\ResourceCollection;
 
 class AchievementController extends Controller
 {
@@ -20,16 +20,29 @@ class AchievementController extends Controller
 
     public function index(Request $request)
     {
-        $achievements = Achievement::active()->orderBy('sort_order')->get();
-        return response()->json($achievements);
+        $achievementModels = Achievement::active()->orderBy('sort_order')->get();
+        
+        $achievementsData = $achievementModels->map(function ($achievementModel) {
+            return AchievementData::fromModel($achievementModel);
+        });
+        
+        return response()->json([
+            'achievements' => $achievementsData
+        ]);
     }
 
     public function userAchievements(Request $request)
     {
         $user = $request->user();
-        $userAchievements = $user->unlockedAchievements;
+        $userAchievementModels = $user->unlockedAchievements;
         
-        return response()->json($userAchievements);
+        $userAchievementsData = $userAchievementModels->map(function ($achievementModel) {
+            return AchievementData::fromModel($achievementModel);
+        });
+        
+        return response()->json([
+            'achievements' => $userAchievementsData
+        ]);
     }
 
     public function userLockedAchievements(Request $request)
@@ -40,12 +53,18 @@ class AchievementController extends Controller
         $unlockedAchievementIds = $user->unlockedAchievements()->pluck('achievements.achievement_key')->toArray();
         
         // Get all active achievements that are not unlocked
-        $lockedAchievements = Achievement::active()
+        $lockedAchievementModels = Achievement::active()
             ->whereNotIn('achievement_key', $unlockedAchievementIds)
             ->orderBy('sort_order')
             ->get();
+            
+        $lockedAchievementsData = $lockedAchievementModels->map(function ($achievementModel) {
+            return AchievementData::fromModel($achievementModel);
+        });
         
-        return response()->json($lockedAchievements);
+        return response()->json([
+            'achievements' => $lockedAchievementsData
+        ]);
     }
 
     public function userProgress(Request $request)

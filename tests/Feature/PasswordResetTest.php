@@ -29,7 +29,9 @@ class PasswordResetTest extends TestCase
 
         // ASSERT
         $response->assertStatus(200);
-        $response->assertJson(['success' => true]);
+        $response->assertJson([
+            'message' => 'If an account with that email exists, a password reset link has been sent.'
+        ]);
 
         // Check that a token was created in the database
         $this->assertDatabaseHas('password_reset_tokens', [
@@ -58,7 +60,6 @@ class PasswordResetTest extends TestCase
         // The response should indicate that the token is invalid
         $response->assertStatus(400);
         $response->assertJson([
-            'success' => false,
             'message' => 'Your password reset token is invalid or has expired.'
         ]);
     }

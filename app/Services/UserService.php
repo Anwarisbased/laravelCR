@@ -6,8 +6,11 @@ use Exception;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use App\Domain\MetaKeys;
 use App\Domain\ValueObjects\UserId;
+use App\Domain\ValueObjects\EmailAddress;
 use App\Domain\ValueObjects\PhoneNumber;
+use App\Domain\ValueObjects\PlainTextPassword;
 use App\Domain\ValueObjects\ReferralCode;
+use App\Domain\ValueObjects\ResetToken;
 use App\DTO\FullProfileDTO;
 use App\DTO\RankDTO;
 use App\DTO\SessionUserDTO;
@@ -35,6 +38,7 @@ final class UserService {
     private CustomFieldRepository $customFieldRepo;
     private UserRepository $userRepo;
     private ?OrderRepository $orderRepo = null;
+    private DataCachingService $dataCachingService;
 
     public function __construct(
         ContainerInterface $container, // Keep container for lazy-loading handlers/policies
@@ -42,6 +46,7 @@ final class UserService {
         RankService $rankService,
         CustomFieldRepository $customFieldRepo,
         UserRepository $userRepo,
+        DataCachingService $dataCachingService,
         OrderRepository $orderRepo = null
     ) {
         $this->container = $container;
@@ -49,6 +54,7 @@ final class UserService {
         $this->rankService = $rankService;
         $this->customFieldRepo = $customFieldRepo;
         $this->userRepo = $userRepo;
+        $this->dataCachingService = $dataCachingService;
         $this->orderRepo = $orderRepo;
         
         $this->registerCommandHandlers();
@@ -99,35 +105,60 @@ final class UserService {
         return $handler->handle($command);
     }
     
-    public function get_user_session_data(UserId $userId): SessionUserDTO {
-        $user_data = $this->userRepo->getUserCoreData($userId);
-        if (!$user_data) {
+    public function get_user_session_data(UserId $userId): \App\Data\SessionData {
+        // Try to get from cache first
+        $cached = $this->dataCachingService->get(\App\Data\SessionData::class, $userId->toInt());
+        if ($cached) {
+            return $cached;
+        }
+
+        // Get user core data and multiple meta fields in a single optimized query
+        $userDataResult = $this->userRepo->getUserCoreAndMeta($userId);
+        if (!$userDataResult) {
             throw new Exception("User with ID {$userId->toInt()} not found.");
         }
 
+        $user_data = $userDataResult['user'];
+        $pointsBalance = $userDataResult['points_balance'];
+        $referral_code = $userDataResult['referral_code'];
+
         $rank_dto = $this->rankService->getUserRank($userId);
-        $referral_code = $this->userRepo->getReferralCode($userId);
+        $shipping_data = $this->userRepo->getShippingAddressData($userId);
 
         // Get first and last name from user meta
         $first_name = $user_data->meta['first_name'] ?? '';
         $last_name = $user_data->meta['last_name'] ?? '';
 
-        $session_dto = new SessionUserDTO(
+        // Create SessionUserDTO as before, extracting values from shipping_data
+        $session_dto = new \App\DTO\SessionUserDTO(
             id: $userId,
             firstName: $first_name,
             lastName: $last_name,
             email: \App\Domain\ValueObjects\EmailAddress::fromString($user_data->email),
-            pointsBalance: \App\Domain\ValueObjects\Points::fromInt($this->userRepo->getPointsBalance($userId)),
+            pointsBalance: \App\Domain\ValueObjects\Points::fromInt($pointsBalance),
             rank: $rank_dto,
-            shippingAddress: $this->userRepo->getShippingAddressDTO($userId),
+            shippingAddress: new \App\DTO\ShippingAddressDTO(
+                firstName: $shipping_data->firstName,
+                lastName: $shipping_data->lastName,
+                address1: $shipping_data->address1,
+                city: $shipping_data->city,
+                state: $shipping_data->state,
+                postcode: $shipping_data->postcode
+            ),
             referralCode: $referral_code,
             featureFlags: new \stdClass()
         );
 
-        return $session_dto;
+        // Convert to SessionData using the fromSessionDto method
+        $sessionData = \App\Data\SessionData::fromSessionDto($session_dto);
+
+        // Cache for 1 hour
+        $this->dataCachingService->put(\App\Data\SessionData::class, $userId->toInt(), $sessionData, 60);
+
+        return $sessionData;
     }
     
-    public function get_current_user_session_data(): SessionUserDTO {
+    public function get_current_user_session_data(): \App\Data\SessionData {
         $current_user = auth()->user();
         if (!$current_user) {
             throw new Exception("User not authenticated.", 401);
@@ -135,7 +166,13 @@ final class UserService {
         return $this->get_user_session_data(UserId::fromInt($current_user->id));
     }
     
-    public function get_full_profile_data(UserId $userId): FullProfileDTO {
+    public function get_full_profile_data(UserId $userId): \App\Data\ProfileData {
+        // Try to get from cache first
+        $cached = $this->dataCachingService->get(\App\Data\ProfileData::class, $userId->toInt());
+        if ($cached) {
+            return $cached;
+        }
+
         $user_data = $this->userRepo->getUserCoreData($userId);
         if (!$user_data) {
             throw new Exception("User with ID {$userId->toInt()} not found.");
@@ -150,23 +187,31 @@ final class UserService {
             }
         }
         
-        $shipping_dto = $this->userRepo->getShippingAddressDTO($userId);
+        $shipping_data = $this->userRepo->getShippingAddressData($userId);
 
         // Get phone number and referral code from user meta, converting to Value Objects
         $phone_meta = $this->userRepo->getUserMeta($userId, 'phone_number', true);
-        // Fix: Use the correct method to get referral code
+        // Get referral code using the optimized method
         $referral_code_meta = $this->userRepo->getReferralCode($userId);
         
         // Get first and last name from user meta
         $first_name = $user_data->meta['first_name'] ?? '';
         $last_name = $user_data->meta['last_name'] ?? '';
         
-        $profile_dto = new FullProfileDTO(
+        // Create FullProfileDTO as before, extracting values from shipping_data
+        $profile_dto = new \App\DTO\FullProfileDTO(
             firstName: $first_name,
             lastName: $last_name,
             phoneNumber: !empty($phone_meta) ? PhoneNumber::fromString($phone_meta) : null,
             referralCode: !empty($referral_code_meta) ? ReferralCode::fromString($referral_code_meta) : null,
-            shippingAddress: $shipping_dto,
+            shippingAddress: new \App\DTO\ShippingAddressDTO(
+                firstName: $shipping_data->firstName,
+                lastName: $shipping_data->lastName,
+                address1: $shipping_data->address1,
+                city: $shipping_data->city,
+                state: $shipping_data->state,
+                postcode: $shipping_data->postcode
+            ),
             unlockedAchievementKeys: [], // This should come from AchievementRepository
             customFields: (object) [
                 'definitions' => $custom_fields_definitions,
@@ -174,50 +219,106 @@ final class UserService {
             ]
         );
 
-        return $profile_dto;
+        // Convert to ProfileData using the fromProfileDto method
+        $profileData = \App\Data\ProfileData::fromProfileDto($profile_dto);
+
+        // Cache for 1 hour
+        $this->dataCachingService->put(\App\Data\ProfileData::class, $userId->toInt(), $profileData, 60);
+
+        return $profileData;
     }
 
-    public function get_current_user_full_profile_data(): FullProfileDTO {
+    public function get_current_user_full_profile_data(): \App\Data\ProfileData {
         $current_user = auth()->user();
         if (!$current_user) {
             throw new Exception("User not authenticated.", 401);
         }
         return $this->get_full_profile_data(UserId::fromInt($current_user->id));
     }
+    
+    public function getUserData(UserId $userId): ?\App\Data\UserData
+    {
+        // Try to get from cache first
+        $cached = $this->dataCachingService->get(\App\Data\UserData::class, $userId->toInt());
+        if ($cached) {
+            return $cached;
+        }
 
-    public function get_user_dashboard_data(UserId $userId): array {
-        return [
-            'lifetime_points' => $this->userRepo->getLifetimePoints($userId),
-        ];
+        $user = $this->userRepo->getUserCoreData($userId);
+        if (!$user) {
+            return null;
+        }
+        
+        $userData = \App\Data\UserData::fromModel($user);
+
+        // Cache for 1 hour
+        $this->dataCachingService->put(\App\Data\UserData::class, $userId->toInt(), $userData, 60);
+
+        return $userData;
     }
     
-    public function request_password_reset(string $email): void {
+    public function get_current_user_data(): ?\App\Data\UserData
+    {
+        $current_user = auth()->user();
+        if (!$current_user) {
+            return null;
+        }
+        return $this->getUserData(UserId::fromInt($current_user->id));
+    }
+
+    public function get_user_dashboard_data(UserId $userId): \App\Data\DashboardData {
+        // Try to get from cache first
+        $cached = $this->dataCachingService->get(\App\Data\DashboardData::class, $userId->toInt());
+        if ($cached) {
+            return $cached;
+        }
+
+        // Using the optimized method to get meta data
+        $userDataResult = $this->userRepo->getUserCoreAndMeta($userId);
+        $lifetimePoints = $userDataResult ? $userDataResult['lifetime_points'] : 0;
+
+        $dashboardData = \App\Data\DashboardData::fromServiceResponse(
+            $lifetimePoints
+        );
+
+        // Cache for 30 minutes
+        $this->dataCachingService->put(\App\Data\DashboardData::class, $userId->toInt(), $dashboardData, 30);
+
+        return $dashboardData;
+    }
+    
+    public function request_password_reset(EmailAddress $email): void {
         // Use Laravel's built-in password reset functionality directly
         $broker = Password::broker();
-        $response = $broker->sendResetLink(['email' => $email]);
+        $response = $broker->sendResetLink(['email' => $email->value]);
 
         if ($response === Password::RESET_LINK_SENT) {
-            Log::info('Password reset link sent to ' . $email);
+            Log::info('Password reset link sent to ' . $email->value);
         } else {
-            Log::error('Could not send password reset link to ' . $email . '. Response: ' . $response);
+            Log::error('Could not send password reset link to ' . $email->value . '. Response: ' . $response);
         }
     }
 
-    public function perform_password_reset(string $token, string $email, string $password): void {
+    public function perform_password_reset($token, $email, $password): void {
+        // Convert to value objects if raw values provided
+        $tokenVO = is_string($token) ? \App\Domain\ValueObjects\ResetToken::fromString($token) : $token;
+        $emailVO = is_string($email) ? \App\Domain\ValueObjects\EmailAddress::fromString($email) : $email;
+        $passwordVO = is_string($password) ? \App\Domain\ValueObjects\PlainTextPassword::fromString($password) : $password;
+
         // Use Laravel's built-in password reset functionality
         $credentials = [
-            'email' => $email,
-            'password' => $password,
-            'password_confirmation' => $password,
-            'token' => $token,
+            'email' => $emailVO->value,
+            'password' => $passwordVO->value,
+            'password_confirmation' => $passwordVO->value,
+            'token' => $tokenVO->value,
         ];
 
         // Debug logging
         \Log::info('Password reset attempt', [
-            'email' => $email,
-            'token' => $token,
-            'user_exists_in_db' => \App\Models\User::where('email', $email)->exists(),
-            'token_exists_in_db' => DB::table('password_reset_tokens')->where('email', $email)->exists()
+            'email' => $emailVO->value,
+            'token' => $tokenVO->value,
+            'user_exists_in_db' => \App\Models\User::where('email', $emailVO->value)->exists(),
+            'token_exists_in_db' => DB::table('password_reset_tokens')->where('email', $emailVO->value)->exists()
         ]);
 
         $broker = Password::broker();
@@ -234,10 +335,10 @@ final class UserService {
             // More detailed logging for debugging
             \Log::error('Password reset failed', [
                 'response' => $response,
-                'email' => $email,
+                'email' => $emailVO->value,
                 'token' => $token,
-                'user_exists_in_db' => \App\Models\User::where('email', $email)->exists(),
-                'token_exists_in_db' => DB::table('password_reset_tokens')->where('email', $email)->exists(),
+                'user_exists_in_db' => \App\Models\User::where('email', $emailVO->value)->exists(),
+                'token_exists_in_db' => DB::table('password_reset_tokens')->where('email', $emailVO->value)->exists(),
                 'expected_responses' => [
                 'PASSWORD_RESET' => Password::PASSWORD_RESET,
                 'INVALID_USER' => Password::INVALID_USER,
@@ -259,11 +360,11 @@ final class UserService {
         }
     }
     
-    public function login(string $username, string $password): array {
+    public function login(EmailAddress $email, PlainTextPassword $password): \App\Data\LoginResponseData {
         // Find the user by email
-        $user = \App\Models\User::where('email', $username)->first();
+        $user = \App\Models\User::where('email', $email->value)->first();
         
-        if (!$user || !\Illuminate\Support\Facades\Hash::check($password, $user->password)) {
+        if (!$user || !\Illuminate\Support\Facades\Hash::check($password->value, $user->password)) {
             throw new Exception('Could not generate authentication token after registration.');
         }
         
@@ -277,14 +378,11 @@ final class UserService {
         $first_name = $user->meta['first_name'] ?? $user->name;
         $last_name = $user->meta['last_name'] ?? '';
         
-        return [
-            'success' => true,
-            'data' => [
-                'token' => $token,
-                'user_email' => $user->email,
-                'user_nicename' => $first_name,
-                'user_display_name' => $user->name,
-            ]
-        ];
+        return \App\Data\LoginResponseData::fromServiceResponse(
+            $token,
+            $user->email,
+            $first_name,
+            $user->name
+        );
     }
 }

@@ -1,6 +1,7 @@
 <?php
 namespace App\Repositories;
 
+use App\Domain\ValueObjects\UserId;
 use Illuminate\Support\Facades\DB;
 
 // Exit if accessed directly.
@@ -11,9 +12,9 @@ use Illuminate\Support\Facades\DB;
  */
 class ActionLogRepository {
 
-    public function countUserActions(int $user_id, string $action_type): int {
+    public function countUserActions(UserId $user_id, string $action_type): int {
         $count = DB::table('canna_user_action_log')
-            ->where('user_id', $user_id)
+            ->where('user_id', $user_id->toInt())
             ->where('action_type', $action_type)
             ->count();
         

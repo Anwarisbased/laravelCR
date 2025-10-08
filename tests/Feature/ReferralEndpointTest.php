@@ -50,10 +50,9 @@ class ReferralEndpointTest extends TestCase
 
         // ASSERT
         $response->assertStatus(200);
-        $response->assertJsonPath('success', true);
         
         // This is the target state. The service needs to be implemented to make this pass.
-        $response->assertJsonCount(2, 'data.referrals');
+        $response->assertJsonCount(2, 'referrals');
         $response->assertJsonFragment(['invitee_email' => $refereeConverted->email, 'status' => 'Converted']);
         $response->assertJsonFragment(['invitee_email' => $refereePending->email, 'status' => 'Pending']);
     }
@@ -76,7 +75,6 @@ class ReferralEndpointTest extends TestCase
 
         // ASSERT
         $response->assertStatus(200);
-        $response->assertJsonPath('success', true);
         // The nudge service returns structured options based on business logic
         $response->assertJsonFragment([
             'can_nudge' => true,

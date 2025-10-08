@@ -22,26 +22,26 @@ class CDPService {
     /**
      * The single entry point for tracking all events.
      */
-    public function track( int $user_id, string $event_name, array $properties = [] ) {
+    public function track( UserId $user_id, string $event_name, array $properties = [] ) {
         $user_snapshot = $this->build_user_snapshot( $user_id );
         $final_payload = array_merge( $properties, [ 'user_snapshot' => $user_snapshot ] );
 
         // In a real implementation, this is where you would get your API keys.
         // For now, we will log the event to the debug log instead of making a real API call.
         // This allows us to develop and test the event structure without needing live credentials.
-        Log::info('[CannaRewards CDP Event] User ID: ' . $user_id . ' | Event: ' . $event_name . ' | Payload: ' . json_encode($final_payload));
+        Log::info('[CannaRewards CDP Event] User ID: ' . $user_id->toInt() . ' | Event: ' . $event_name . ' | Payload: ' . json_encode($final_payload));
     }
 
     /**
      * Builds the rich user snapshot object that is attached to every event.
      */
-    private function build_user_snapshot( int $user_id ): array {
-        $user = $this->userRepository->getUserCoreData(UserId::fromInt($user_id));
+    private function build_user_snapshot( UserId $user_id ): array {
+        $user = $this->userRepository->getUserCoreData($user_id);
         if ( ! $user ) {
             return [];
         }
 
-        $userIdVO = UserId::fromInt($user_id);
+        $userIdVO = $user_id;
         $rank_dto = $this->rankService->getUserRank($userIdVO);
 
         return [

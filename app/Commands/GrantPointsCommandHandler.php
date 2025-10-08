@@ -49,7 +49,7 @@ final class GrantPointsCommandHandler {
             'base_points'        => $command->basePoints->toInt(),
             'multiplier_applied' => $final_multiplier,
         ];
-        $this->actionLogService->record( $command->userId->toInt(), 'points_granted', 0, $log_meta_data );
+        $this->actionLogService->record( $command->userId, 'points_granted', 0, $log_meta_data );
         
         Event::dispatch(new UserPointsGranted(['user_id' => $command->userId->toInt()]));
 

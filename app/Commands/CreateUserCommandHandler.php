@@ -49,13 +49,14 @@ final class CreateUserCommandHandler {
         $this->user_repository->savePointsAndRank($user_id_vo, 0, 0, 'member');
 
         // Dispatch the UserCreated event with the richer payload.
+        $userIdVO = \App\Domain\ValueObjects\UserId::fromInt($user_id);
         Event::dispatch(new UserCreated([
             'user_id' => $user_id,
             'firstName' => $command->firstName,
             'referral_code' => $command->referralCode ? (string)$command->referralCode : null
         ]));
         
-        $this->cdp_service->track($user_id, 'user_created', ['signup_method' => 'password', 'referral_code_used' => $command->referralCode]);
+        $this->cdp_service->track($userIdVO, 'user_created', ['signup_method' => 'password', 'referral_code_used' => $command->referralCode]);
 
         return ['success' => true, 'message' => 'Registration successful.', 'userId' => $user_id];
     }
