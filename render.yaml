@@ -11,8 +11,8 @@ services:
         value: production
       - key: APP_DEBUG
         value: false
-      - key: APP_KEY  # This will be generated after deployment
-        sync: false   # Mark as secret
+      - key: APP_KEY
+        sync: false   # This will be set manually in Render dashboard
       - key: DB_HOST
         fromDatabase:
           name: cannarewards-db
