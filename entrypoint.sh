@@ -1,32 +1,26 @@
 #!/bin/bash
 set -e
 
-# Copy the production .env file if it doesn't exist or if we're in production
-if [ "$APP_ENV" = "production" ]; then
-    echo "Setting up production environment"
-    cp -n /var/www/html/.env.production /var/www/html/.env 2>/dev/null || true
-fi
+# Wait for database to be ready
+echo "Waiting for database to be ready..."
+until mysqladmin ping -h db --silent; do
+    echo "Database is not ready yet. Waiting..."
+    sleep 2
+done
+echo "Database is ready!"
 
-# Generate APP_KEY if it doesn't exist
-if [ -z "$APP_KEY" ]; then
-    echo "Generating APP_KEY"
-    php artisan key:generate --force
-else
-    echo "Using provided APP_KEY"
-    # Make sure APP_KEY is set in the .env file
-    sed -i "s/^APP_KEY=.*/APP_KEY=${APP_KEY//\//\\/}/" /var/www/html/.env
-fi
+# Change to working directory
+cd /var/www/html
 
-# Run migrations and seeders
-echo "Running database migrations"
-php artisan migrate --force || echo "Migration failed (may be due to database not being ready yet). Will retry in 10 seconds."
-sleep 10
-php artisan migrate --force || echo "Migration failed again."
+# Run Laravel setup commands
+echo "Running Laravel setup..."
 
-echo "Running database seeders"
-php artisan db:seed --force || echo "Seeding failed (may be due to database not being ready yet). Will retry in 10 seconds."
-sleep 10
-php artisan db:seed --force || echo "Seeding failed again."
+# Run migrations
+php artisan migrate --force || echo "Migration failed (may be due to database not being ready yet)"
+
+# Run seeders
+php artisan db:seed --force || echo "Seeding failed (may be due to database not being ready yet)"
 
 # Start Apache
+echo "Starting Apache server..."
 apache2-foreground
