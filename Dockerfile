@@ -34,11 +34,22 @@ RUN mkdir -p /var/www/html/storage/framework/cache/data && \
     mkdir -p /var/www/html/storage/framework/sessions && \
     mkdir -p /var/www/html/storage/framework/views && \
     mkdir -p /var/www/html/storage/logs && \
-    mkdir -p /var/www/html/bootstrap/cache
+    mkdir -p /var/www/html/bootstrap/cache && \
+    mkdir -p /var/www/html/database
 
-# Set proper permissions
+# Create SQLite database file
+RUN touch /var/www/html/database/database.sqlite
+
+# Set proper ownership for storage and bootstrap directories
 RUN chown -R www-data:www-data /var/www/html/storage
 RUN chown -R www-data:www-data /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/database/database.sqlite
+
+# Create symbolic links for storage if they don't exist
+RUN if [ ! -L /var/www/html/public/storage ] || [ ! -d /var/www/html/public/storage ]; then \
+        rm -rf /var/www/html/public/storage; \
+        php /var/www/html/artisan storage:link --ansi; \
+    fi || echo "Could not create storage link, continuing..."
 
 # Run Laravel setup commands
 RUN php artisan key:generate --ansi || echo "APP_KEY already set"
