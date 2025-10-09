@@ -51,15 +51,12 @@ RUN php artisan view:cache --ansi
 RUN echo '#!/bin/bash\n\
 set -e\n\
 \n\
-# Wait for database to be ready\n\
-until php -r "try { new PDO(\"mysql:host=${DB_HOST:-mysql};port=${DB_PORT:-3306};dbname=${DB_DATABASE:-laravel}\", \"${DB_USERNAME:-sail}\", \"${DB_PASSWORD:-password}\"); echo \"Connected successfully\"; } catch (PDOException \$e) { exit(1); }"; do\n\
-    echo "Waiting for database connection..."\n\
-    sleep 2\n\
-done\n\
-\n\
-# Run migrations and seeders\n\
-php artisan migrate --force\n\
-php artisan db:seed --force\n\
+# Check if we should run migrations (only in production)\n\
+if [ "$1" != "php" ]; then\n\
+    # Run migrations and seeders\n\
+    php artisan migrate --force\n\
+    php artisan db:seed --force\n\
+fi\n\
 \n\
 # Start Apache\n\
 apache2-foreground\n' > /var/www/html/entrypoint.sh && chmod +x /var/www/html/entrypoint.sh
