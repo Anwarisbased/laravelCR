@@ -40,7 +40,7 @@ RUN mkdir -p /var/www/html/storage/framework/cache/data && \
 RUN chown -R www-data:www-data /var/www/html/storage
 RUN chown -R www-data:www-data /var/www/html/bootstrap/cache
 
-# Run Laravel setup commands (excluding migrations which need to run at runtime)
+# Run Laravel setup commands
 RUN php artisan key:generate --ansi || echo "APP_KEY already set"
 RUN php artisan storage:link --ansi
 RUN php artisan config:cache --ansi
@@ -51,12 +51,9 @@ RUN php artisan view:cache --ansi
 RUN echo '#!/bin/bash\n\
 set -e\n\
 \n\
-# Check if we should run migrations (only in production)\n\
-if [ "$1" != "php" ]; then\n\
-    # Run migrations and seeders\n\
-    php artisan migrate --force\n\
-    php artisan db:seed --force\n\
-fi\n\
+# Run migrations and seeders (will fail gracefully if database is not ready)\n\
+php artisan migrate --force || echo "Migration failed (may be due to database not being ready yet)."\n\
+php artisan db:seed --force || echo "Seeding failed (may be due to database not being ready yet)."\n\
 \n\
 # Start Apache\n\
 apache2-foreground\n' > /var/www/html/entrypoint.sh && chmod +x /var/www/html/entrypoint.sh
